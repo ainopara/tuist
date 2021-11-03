@@ -132,6 +132,9 @@ final class WorkspaceDescriptorGenerator: WorkspaceDescriptorGenerating {
                 path: graphTraverser.workspace.xcWorkspacePath.parentDirectory
             )
         }
+        if graphTraverser.name == "Leo" {
+            workspaceData.children.append(workspaceFileElement(path: RelativePath("Pods/Pods.xcodeproj")))
+        }
 
         // Schemes
         let schemes = try schemeDescriptorsGenerator.generateWorkspaceSchemes(
