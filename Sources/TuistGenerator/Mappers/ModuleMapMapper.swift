@@ -112,7 +112,7 @@ public final class ModuleMapMapper: WorkspaceMapping {
             case let .project(name, path):
                 dependentProject = projectsByPath[path]!
                 dependentTarget = targetsByName[name]!
-            case .framework, .xcframework, .library, .package, .sdk, .xctest:
+            case .framework, .xcframework, .library, .package, .sdk, .xctest, .pods:
                 continue
             }
 

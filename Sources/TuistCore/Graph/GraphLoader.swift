@@ -212,6 +212,9 @@ public final class GraphLoader: GraphLoading {
 
         case .xctest:
             return try loadXCTestSDK(platform: fromPlatform)
+
+        case .pods:
+            return .target(name: "libPods-\(fromTarget)", path: path.appending(component: "Pods"))
         }
     }
 

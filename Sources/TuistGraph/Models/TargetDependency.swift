@@ -15,6 +15,7 @@ public enum TargetDependency: Equatable, Hashable, Codable {
     case package(product: String)
     case sdk(name: String, status: SDKStatus)
     case xctest
+    case pods
 }
 
 // MARK: - Codable
@@ -29,6 +30,7 @@ extension TargetDependency {
         case package
         case sdk
         case xctest
+        case pods
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -73,6 +75,8 @@ extension TargetDependency {
             self = .sdk(name: name, status: status)
         case .xctest:
             self = .xctest
+        case .pods:
+            self = .pods
         }
     }
 
@@ -106,6 +110,8 @@ extension TargetDependency {
             try container.encode(status, forKey: .status)
         case .xctest:
             try container.encode(Kind.xctest, forKey: .kind)
+        case .pods:
+            try container.encode(Kind.pods, forKey: .kind)
         }
     }
 }

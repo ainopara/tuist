@@ -268,6 +268,8 @@ private extension TargetDependency {
             return "xcframework"
         case .xctest:
             return "xctest"
+        case .pods:
+            return "pods"
         }
     }
 
@@ -289,6 +291,9 @@ private extension TargetDependency {
             return name
         case .xctest:
             return "xctest"
+        case .pods:
+            return "pods"
+
         }
     }
 }

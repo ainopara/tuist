@@ -78,6 +78,8 @@ public enum TargetDependency: Codable, Equatable {
         .sdk(name: name, status: .required)
     }
 
+    case pods
+
     public var typeName: String {
         switch self {
         case .target:
@@ -98,6 +100,8 @@ public enum TargetDependency: Codable, Equatable {
             return "xctest"
         case .external:
             return "external"
+        case .pods:
+            return "pods"
         }
     }
 }
@@ -170,6 +174,9 @@ extension TargetDependency {
         case "external":
             self = .external(name: try container.decode(String.self, forKey: .name))
 
+        case "pods":
+            self = .pods
+
         default:
             throw CodingError.unknownType(type)
         }
@@ -203,6 +210,8 @@ extension TargetDependency {
             break
         case let .external(name: name):
             try container.encode(name, forKey: .name)
+        case .pods:
+            break
         }
     }
 }
