@@ -28,11 +28,11 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
     """)
     var sources: [String] = []
 
-    @Flag(
-        name: .shortAndLong,
-        help: "Don't open the project after generating it."
-    )
-    var noOpen: Bool = false
+//    @Flag(
+//        name: .shortAndLong,
+//        help: "Don't open the project after generating it."
+//    )
+    var noOpen: Bool = true
 
     @Flag(
         name: [.customShort("x"), .long],
