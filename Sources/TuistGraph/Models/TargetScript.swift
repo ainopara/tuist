@@ -91,6 +91,8 @@ public struct TargetScript: Equatable, Codable {
     /// Whether this script only runs on install builds (default is false)
     public let runForInstallBuildsOnly: Bool
 
+    public let dependencyFile: AbsolutePath?
+
     /// The path to the shell which shall execute this script.
     public let shellPath: String
 
@@ -120,6 +122,7 @@ public struct TargetScript: Equatable, Codable {
         showEnvVarsInLog: Bool = true,
         basedOnDependencyAnalysis: Bool? = nil,
         runForInstallBuildsOnly: Bool = false,
+        dependencyFile: AbsolutePath? = nil,
         shellPath: String = "/bin/sh"
     ) {
         self.name = name
@@ -132,6 +135,7 @@ public struct TargetScript: Equatable, Codable {
         self.showEnvVarsInLog = showEnvVarsInLog
         self.basedOnDependencyAnalysis = basedOnDependencyAnalysis
         self.runForInstallBuildsOnly = runForInstallBuildsOnly
+        self.dependencyFile = dependencyFile
         self.shellPath = shellPath
     }
 }

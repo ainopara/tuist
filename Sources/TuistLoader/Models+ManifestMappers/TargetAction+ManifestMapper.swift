@@ -21,6 +21,7 @@ extension TuistGraph.TargetScript {
         let outputFileListPaths = try absolutePaths(for: manifest.outputFileListPaths, generatorPaths: generatorPaths)
         let basedOnDependencyAnalysis = manifest.basedOnDependencyAnalysis
         let runForInstallBuildsOnly = manifest.runForInstallBuildsOnly
+        let dependencyFile = try absolutePath(for: manifest.dependencyFile, generatorPaths: generatorPaths)
         let shellPath = manifest.shellPath
 
         let script: TuistGraph.TargetScript.Script
@@ -46,6 +47,7 @@ extension TuistGraph.TargetScript {
             outputFileListPaths: outputFileListPaths,
             basedOnDependencyAnalysis: basedOnDependencyAnalysis,
             runForInstallBuildsOnly: runForInstallBuildsOnly,
+            dependencyFile: dependencyFile,
             shellPath: shellPath
         )
     }
@@ -60,6 +62,17 @@ extension TuistGraph.TargetScript {
             let base = AbsolutePath(absolutePath.dirname)
             return try base.throwingGlob(absolutePath.basename)
         }.reduce([], +)
+    }
+
+    private static func absolutePath(for path: Path?, generatorPaths: GeneratorPaths) throws -> AbsolutePath? {
+        guard let path = path else { return nil }
+
+        if path.pathString.contains("$") {
+            return try generatorPaths.resolve(path: path)
+        }
+        let absolutePath = try generatorPaths.resolve(path: path)
+        let base = AbsolutePath(absolutePath.dirname)
+        return try base.throwingGlob(absolutePath.basename).first
     }
 }
 
