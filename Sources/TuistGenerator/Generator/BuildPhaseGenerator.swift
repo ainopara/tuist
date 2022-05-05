@@ -158,6 +158,9 @@ final class BuildPhaseGenerator: BuildPhaseGenerating {
                 // leave it at the default value.
                 buildPhase.alwaysOutOfDate = !basedOnDependencyAnalysis
             }
+            if let dependencyFile = script.dependencyFile {
+                buildPhase.dependencyFile = dependencyFile.relative(to: sourceRootPath).pathString
+            }
 
             pbxproj.add(object: buildPhase)
             pbxTarget.buildPhases.append(buildPhase)
