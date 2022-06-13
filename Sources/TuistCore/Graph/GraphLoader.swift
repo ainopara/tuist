@@ -109,7 +109,8 @@ public final class GraphLoader: GraphLoading {
                 path: path,
                 fromPlatform: target.platform,
                 dependency: $0,
-                cache: cache
+                cache: cache,
+                for: target
             )
         }
 
@@ -122,7 +123,8 @@ public final class GraphLoader: GraphLoading {
         path: AbsolutePath,
         fromPlatform: Platform,
         dependency: TargetDependency,
-        cache: Cache
+        cache: Cache,
+        for target: Target
     ) throws -> GraphDependency {
         switch dependency {
         case let .target(toTarget):
@@ -166,6 +168,12 @@ public final class GraphLoader: GraphLoading {
 
         case .xctest:
             return try loadXCTestSDK(platform: fromPlatform)
+
+        case .pods(.library):
+            return .target(name: "libPods-\(target.name)", path: path.appending(component: "Pods"))
+
+        case .pods(.framework):
+            return .target(name: "Pods_\(target.name)", path: path.appending(component: "Pods"))
         }
     }
 

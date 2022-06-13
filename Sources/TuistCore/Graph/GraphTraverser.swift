@@ -348,6 +348,13 @@ public class GraphTraverser: GraphTraversing {
             .compactMap(dependencyReference)
         references.formUnion(dynamicLibrariesAndFrameworks)
 
+        // Link Pods
+        if target.target.dependencies.contains(.pods(type: .library)) {
+            references.formUnion([.product(target: "Pods-\(name)", productName: "Pods-\(name).a", platformFilter: nil)])
+        } else if target.target.dependencies.contains(.pods(type: .framework)) {
+            references.formUnion([.product(target: "Pods-\(name)", productName: "Pods_\(name).framework", platformFilter: nil)])
+        }
+
         return references
     }
 
