@@ -111,6 +111,10 @@ public final class DependenciesContentHasher: DependenciesContentHashing {
             return try contentHasher.hash("sdk-\(name)-\(status)")
         case .xctest:
             return try contentHasher.hash("xctest")
+        case .pods(.library):
+            return try contentHasher.hash("libraryPods")
+        case .pods(.framework):
+            return try contentHasher.hash("frameworkPods")
         }
     }
 

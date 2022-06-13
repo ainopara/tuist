@@ -64,6 +64,10 @@ extension TuistGraph.TargetDependency {
                 throw TargetDependencyMapperError.invalidExternalDependency(name: name)
             }
             return dependencies
+        case .pods(.library):
+            return [.pods(type: .library)]
+        case .pods(.framework):
+            return [.pods(type: .framework)]
         }
     }
 }

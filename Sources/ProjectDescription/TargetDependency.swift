@@ -76,6 +76,8 @@ public enum TargetDependency: Codable, Equatable {
     /// Dependency on an external dependency imported through `Dependencies.swift`.
     case external(name: String)
 
+    case pods(type: SDKType)
+
     /// Dependency on system library or framework
     ///
     /// - Parameters:
@@ -107,6 +109,10 @@ public enum TargetDependency: Codable, Equatable {
             return "xctest"
         case .external:
             return "external"
+        case .pods(.library):
+            return "libraryPods"
+        case .pods(.framework):
+            return "frameworkPods"
         }
     }
 }

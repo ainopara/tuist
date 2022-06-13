@@ -408,9 +408,19 @@ final class LinkGenerator: LinkGenerating {
                 case .bundle:
                     break
                 case let .product(target, _, platformFilter):
-                    guard let fileRef = fileElements.product(target: target) else {
-                        throw LinkGeneratorError.missingProduct(name: target)
-                    }
+                    let fileRef: PBXFileReference = try {
+                        if target.hasPrefix("Pods-") {
+                            guard let fileRef = fileElements.pods(target: target) else {
+                                throw LinkGeneratorError.missingProduct(name: target)
+                            }
+                            return fileRef
+                        } else {
+                            guard let fileRef = fileElements.product(target: target) else {
+                                throw LinkGeneratorError.missingProduct(name: target)
+                            }
+                            return fileRef
+                        }
+                    }()
                     let buildFile = PBXBuildFile(file: fileRef)
                     buildFile.platformFilter = platformFilter?.xcodeprojValue
                     pbxproj.add(object: buildFile)
