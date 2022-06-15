@@ -349,12 +349,25 @@ public class GraphTraverser: GraphTraversing {
         references.formUnion(dynamicLibrariesAndFrameworks)
 
         // Link Pods
-        if target.target.dependencies.contains(.pods(type: .library)) {
+        if target.target.dependencies.contains(where: { dependency in
+            switch dependency {
+            case .cocoapod(let type, _) where type == .library :
+                return true
+            default:
+                return false
+            }
+        }) {
             references.formUnion([.product(target: "Pods-\(name)", productName: "Pods-\(name).a", platformFilter: nil)])
-        } else if target.target.dependencies.contains(.pods(type: .framework)) {
+        } else if target.target.dependencies.contains(where: { dependency in
+            switch dependency {
+            case .cocoapod(let type, _) where type == .framework:
+                return true
+            default:
+                return false
+            }
+        }) {
             references.formUnion([.product(target: "Pods-\(name)", productName: "Pods_\(name).framework", platformFilter: nil)])
         }
-
         return references
     }
 

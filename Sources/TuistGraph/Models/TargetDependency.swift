@@ -20,5 +20,5 @@ public enum TargetDependency: Equatable, Hashable, Codable {
     case package(product: String)
     case sdk(name: String, status: SDKStatus)
     case xctest
-    case pods(type: PodDependencyType)
+    case cocoapod(type: PodDependencyType, content: String)
 }
