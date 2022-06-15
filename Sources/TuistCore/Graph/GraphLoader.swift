@@ -169,11 +169,13 @@ public final class GraphLoader: GraphLoading {
         case .xctest:
             return try loadXCTestSDK(platform: fromPlatform)
 
-        case .pods(.library):
-            return .target(name: "libPods-\(target.name)", path: path.appending(component: "Pods"))
-
-        case .pods(.framework):
-            return .target(name: "Pods_\(target.name)", path: path.appending(component: "Pods"))
+        case let .cocoapod(type, _):
+            switch type {
+            case .library:
+                return .target(name: "libPods-\(target.name)", path: path.appending(component: "Pods"))
+            case .framework:
+                return .target(name: "Pods_\(target.name)", path: path.appending(component: "Pods"))
+            }
         }
     }
 

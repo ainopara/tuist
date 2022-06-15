@@ -111,10 +111,13 @@ public final class DependenciesContentHasher: DependenciesContentHashing {
             return try contentHasher.hash("sdk-\(name)-\(status)")
         case .xctest:
             return try contentHasher.hash("xctest")
-        case .pods(.library):
-            return try contentHasher.hash("libraryPods")
-        case .pods(.framework):
-            return try contentHasher.hash("frameworkPods")
+        case let .cocoapod(type, content):
+            switch type {
+            case .library:
+                return try contentHasher.hash("cocoapod-library-\(content)")
+            case .framework:
+                return try contentHasher.hash("cocoapod-framework-\(content)")
+            }
         }
     }
 

@@ -52,7 +52,15 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
     )
     var ignoreCache: Bool = false
 
+    @Flag(inversion: .prefixedNo, help: "generate podfile")
+    var generatePodfile: Bool = true
+
+    @Flag(help: "auto run bundle exec pod install")
+    var autoPodInstall: Bool = false
+
     func run() async throws {
+        GenerateCommandHelper.generatePodfile = generatePodfile
+        GenerateCommandHelper.autoPodInstall = autoPodInstall
         try await GenerateService().run(
             path: path,
             sources: Set(sources),
@@ -73,4 +81,9 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
             ]
         )
     }
+}
+
+public class GenerateCommandHelper {
+    public static var generatePodfile = true
+    public static var autoPodInstall = false
 }
