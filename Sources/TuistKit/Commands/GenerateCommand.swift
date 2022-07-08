@@ -58,9 +58,13 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
     @Flag(help: "auto run bundle exec pod install")
     var autoPodInstall: Bool = false
 
+    @Flag(inversion: .prefixedNo, help: "Recursively find cocoapods dependencies")
+    var recursivelyFindCocoapodsDependencies: Bool = true
+
     func run() async throws {
         GenerateCommandHelper.generatePodfile = generatePodfile
         GenerateCommandHelper.autoPodInstall = autoPodInstall
+        GenerateCommandHelper.recursivelyFindCocoapodsDependencies = recursivelyFindCocoapodsDependencies
         try await GenerateService().run(
             path: path,
             sources: Set(sources),
@@ -86,4 +90,5 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
 public class GenerateCommandHelper {
     public static var generatePodfile = true
     public static var autoPodInstall = false
+    public static var recursivelyFindCocoapodsDependencies = true
 }

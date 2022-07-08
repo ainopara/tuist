@@ -78,9 +78,9 @@ class Generator: Generating {
                                 switch dependency {
                                 case .cocoapod(_, let content):
                                     resultPods.append(content)
-                                case .target(let childTargetName):
+                                case .target(let childTargetName) where GenerateCommandHelper.recursivelyFindCocoapodsDependencies:
                                     resultPods.append(contentsOf: fetchTargetPods(targetName: childTargetName))
-                                case .project(let childTargetName, _):
+                                case .project(let childTargetName, _) where GenerateCommandHelper.recursivelyFindCocoapodsDependencies:
                                     resultPods.append(contentsOf: fetchTargetPods(targetName: childTargetName))
                                 default:
                                     continue
@@ -118,7 +118,7 @@ class Generator: Generating {
                 let context = try? JSONSerialization.jsonObject(with: data, options: .allowFragments) as? [String: Any]
             {
                 let currentDirectoryPath = FileHandler.shared.currentPath.pathString
-                let fileSystemLoader = FileSystemLoader(paths: [.init(currentDirectoryPath + "/Templates")])
+                let fileSystemLoader = FileSystemLoader(paths: [.init(currentDirectoryPath)])
                 let environment = Environment(loader: fileSystemLoader)
                 if let output = try? environment.renderTemplate(name: "Podfile.stencil", context: context) {
                     let outputPath = currentDirectoryPath + "/Podfile"
