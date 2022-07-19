@@ -14,6 +14,7 @@ extension TuistGraph.RunActionOptions {
     ) throws -> TuistGraph.RunActionOptions {
         var language: String?
         var storeKitConfigurationPath: AbsolutePath?
+        var customLLDBInitFile: String?
         var simulatedLocation: SimulatedLocation?
 
         language = manifest.language?.identifier
@@ -21,6 +22,8 @@ extension TuistGraph.RunActionOptions {
         if let path = manifest.storeKitConfigurationPath {
             storeKitConfigurationPath = try generatorPaths.resolveSchemeActionProjectPath(path)
         }
+
+        customLLDBInitFile = manifest.customLLDBInitFile
 
         if let manifestLocation = manifest.simulatedLocation {
             switch (manifestLocation.identifier, manifestLocation.gpxFile) {
@@ -36,6 +39,7 @@ extension TuistGraph.RunActionOptions {
         return TuistGraph.RunActionOptions(
             language: language,
             storeKitConfigurationPath: storeKitConfigurationPath,
+            customLLDBInitFile: customLLDBInitFile,
             simulatedLocation: simulatedLocation
         )
     }

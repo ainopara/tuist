@@ -530,7 +530,8 @@ final class SchemeDescriptorsGenerator: SchemeDescriptorsGenerating {
             environmentVariables: environments,
             language: scheme.runAction?.options.language,
             launchAutomaticallySubstyle: launchActionConstants.launchAutomaticallySubstyle,
-            storeKitConfigurationFileReference: storeKitConfigurationFileReference
+            storeKitConfigurationFileReference: storeKitConfigurationFileReference,
+            customLLDBInitFile: scheme.runAction?.options.customLLDBInitFile
         )
     }
 

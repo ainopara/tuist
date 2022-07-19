@@ -9,6 +9,8 @@ public struct RunActionOptions: Equatable, Codable {
     /// [StoreKit configuration file](https://developer.apple.com/documentation/xcode/setting_up_storekit_testing_in_xcode#3625700).
     public let storeKitConfigurationPath: Path?
 
+    public let customLLDBInitFile: String?
+
     /// A simulated GPS location to use when running the app.
     public let simulatedLocation: SimulatedLocation?
 
@@ -27,10 +29,12 @@ public struct RunActionOptions: Equatable, Codable {
     init(
         language: SchemeLanguage? = nil,
         storeKitConfigurationPath: Path? = nil,
+        customLLDBInitFile: String? = nil,
         simulatedLocation: SimulatedLocation? = nil
     ) {
         self.language = language
         self.storeKitConfigurationPath = storeKitConfigurationPath
+        self.customLLDBInitFile = customLLDBInitFile
         self.simulatedLocation = simulatedLocation
     }
 
