@@ -31,9 +31,9 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
 
     @Flag(
         name: .shortAndLong,
-        help: "Don't open the project after generating it."
+        help: "Open the project after generating it."
     )
-    var noOpen: Bool = false
+    var open: Bool = false
 
     @Flag(
         name: [.customShort("x"), .long],
@@ -66,11 +66,23 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
         }
     }
 
+    @Flag(inversion: .prefixedNo, help: "generate podfile")
+    var generatePodfile: Bool = true
+
+    @Flag(help: "auto run bundle exec pod install")
+    var autoPodInstall: Bool = false
+
+    @Flag(inversion: .prefixedNo, help: "Recursively find cocoapods dependencies")
+    var recursivelyFindCocoapodsDependencies: Bool = true
+
     func run() async throws {
+        GenerateCommandHelper.generatePodfile = generatePodfile
+        GenerateCommandHelper.autoPodInstall = autoPodInstall
+        GenerateCommandHelper.recursivelyFindCocoapodsDependencies = recursivelyFindCocoapodsDependencies
         try await GenerateService().run(
             path: path,
             sources: Set(sources),
-            noOpen: noOpen,
+            noOpen: !open,
             xcframeworks: xcframeworks,
             destination: destination,
             profile: profile,
@@ -78,7 +90,7 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
         )
         GenerateCommand.analyticsDelegate?.addParameters(
             [
-                "no_open": AnyCodable(noOpen),
+                "no_open": AnyCodable(!open),
                 "xcframeworks": AnyCodable(xcframeworks),
                 "no_cache": AnyCodable(ignoreCache),
                 "n_targets": AnyCodable(sources.count),
@@ -99,4 +111,10 @@ struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
             }
         }
     }
+}
+
+public class GenerateCommandHelper {
+    public static var generatePodfile = true
+    public static var autoPodInstall = false
+    public static var recursivelyFindCocoapodsDependencies = true
 }

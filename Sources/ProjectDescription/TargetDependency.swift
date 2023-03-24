@@ -76,6 +76,8 @@ public enum TargetDependency: Codable, Hashable {
     /// Dependency on an external dependency imported through `Dependencies.swift`.
     case external(name: String)
 
+    case cocoapod(type: SDKType, content: String)
+
     /// Dependency on system library or framework
     ///
     /// - Parameters:
@@ -115,6 +117,8 @@ public enum TargetDependency: Codable, Hashable {
             return "xctest"
         case .external:
             return "external"
+        case .cocoapod:
+            return "cocoapod"
         }
     }
 }
