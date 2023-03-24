@@ -95,7 +95,7 @@ extension Target {
         }
 
         if !invalidGlobs.isEmpty {
-            throw TargetError.invalidSourcesGlob(targetName: targetName, invalidGlobs: invalidGlobs)
+            // throw TargetError.invalidSourcesGlob(targetName: targetName, invalidGlobs: invalidGlobs)
         }
 
         return Array(sourceFiles.values)

@@ -109,7 +109,8 @@ public final class GraphLoader: GraphLoading {
                 path: path,
                 forPlatforms: target.supportedPlatforms,
                 dependency: dependency,
-                cache: cache
+                cache: cache,
+                for: target
             ) else { return nil }
             cache.dependencyConditions[(targetDependency, graphDep)] = dependency.condition
             return graphDep
@@ -125,7 +126,8 @@ public final class GraphLoader: GraphLoading {
         path: AbsolutePath,
         forPlatforms platforms: Set<Platform>,
         dependency: TargetDependency,
-        cache: Cache
+        cache: Cache,
+        for target: Target
     ) throws -> GraphDependency? {
         switch dependency {
         case let .target(toTarget, _):
@@ -191,6 +193,13 @@ public final class GraphLoader: GraphLoading {
             return try platforms.map { platform in
                 try loadXCTestSDK(platform: platform)
             }.first
+        case let .cocoapod(type, _):
+            switch type {
+            case .library:
+                return .target(name: "libPods-\(target.name)", path: path.appending(component: "Pods"))
+            case .framework:
+                return .target(name: "Pods_\(target.name)", path: path.appending(component: "Pods"))
+            }
         }
     }
 

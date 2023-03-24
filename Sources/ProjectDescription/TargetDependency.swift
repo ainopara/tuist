@@ -139,6 +139,8 @@ public enum TargetDependency: Codable, Hashable {
     ///   - condition: condition under which to use this dependency, `nil` if this should always be used
     case external(name: String, condition: PlatformCondition? = nil)
 
+    case cocoapod(type: SDKType, content: String)
+
     /// Dependency on system library or framework
     ///
     /// - Parameters:
@@ -181,6 +183,8 @@ public enum TargetDependency: Codable, Hashable {
             return "xctest"
         case .external:
             return "external"
+        case .cocoapod:
+            return "cocoapod"
         }
     }
 }
