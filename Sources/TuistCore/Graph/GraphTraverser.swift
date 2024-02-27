@@ -649,9 +649,13 @@ public class GraphTraverser: GraphTraversing {
                 .map { GraphDependency.target(name: $0.target.name, path: $0.project.path) }
         )
 
+        print("xx", graphDependenciesWithExternalDependencies)
+        print("xxx", filterDependencies(from: graphDependenciesWithExternalDependencies))
+
         let allTargetExternalDependendedUponTargets = filterDependencies(from: graphDependenciesWithExternalDependencies)
             .compactMap { graphDependency -> GraphTarget? in
                 if case let GraphDependency.target(name, path) = graphDependency {
+                    print("xxxx", name)
                     let target = graph.targets[path]![name]!
                     let project = graph.projects[path]!
                     return GraphTarget(path: path, target: target, project: project)

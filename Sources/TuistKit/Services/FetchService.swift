@@ -90,7 +90,7 @@ final class FetchService {
         return plugins
     }
 
-    private func fetchDependencies(path: AbsolutePath, update: Bool, with plugins: TuistGraph.Plugins) throws {
+    private func fetchDependencies(path: AbsolutePath, update: Bool, with plugins: TuistGraph.Plugins) async throws {
         try manifestLoader.validateHasProjectOrWorkspaceManifest(at: path)
 
         let dependenciesManifestPath = path.appending(
@@ -105,6 +105,9 @@ final class FetchService {
         guard fileHandler.exists(dependenciesManifestPath) || fileHandler.exists(packageManifestPath) else {
             return
         }
+
+//        logger.info("Loading Graph...", metadata: .section)
+//        let graph = try await GeneratorFactory().default().load(path: path)
 
         if update {
             logger.info("Updating dependencies.", metadata: .section)
