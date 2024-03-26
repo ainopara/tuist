@@ -422,7 +422,7 @@ public class GraphTraverser: GraphTraversing {
         // Link Pods
         if target.target.dependencies.contains(where: { dependency in
             switch dependency {
-            case .cocoapod(let type, _) where type == .library :
+            case .cocoaPods(let type, _) where type == .library :
                 return true
             default:
                 return false
@@ -433,7 +433,7 @@ public class GraphTraverser: GraphTraversing {
             ])
         } else if target.target.dependencies.contains(where: { dependency in
             switch dependency {
-            case .cocoapod(let type, _) where type == .framework:
+            case .cocoaPods(let type, _) where type == .framework:
                 return true
             default:
                 return false
@@ -649,13 +649,12 @@ public class GraphTraverser: GraphTraversing {
                 .map { GraphDependency.target(name: $0.target.name, path: $0.project.path) }
         )
 
-        print("xx", graphDependenciesWithExternalDependencies)
-        print("xxx", filterDependencies(from: graphDependenciesWithExternalDependencies))
-
         let allTargetExternalDependendedUponTargets = filterDependencies(from: graphDependenciesWithExternalDependencies)
             .compactMap { graphDependency -> GraphTarget? in
                 if case let GraphDependency.target(name, path) = graphDependency {
-                    print("xxxx", name)
+                    if name.hasPrefix("Pods_") || name.hasPrefix("libPods-") {
+                        return nil
+                    }
                     let target = graph.targets[path]![name]!
                     let project = graph.projects[path]!
                     return GraphTarget(path: path, target: target, project: project)

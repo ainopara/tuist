@@ -8,7 +8,7 @@ public enum Constants {
     public static let githubAPIURL = "https://api.github.com"
     public static let githubSlug = "tuist/tuist"
     public static let communityURL = "https://github.com/tuist/tuist/discussions/categories/general"
-    public static let version = "3.42.2"
+    public static let version = "3.42.2-leo"
     public static let bundleName: String = "tuist.zip"
     public static let envBundleName: String = "tuistenv.zip"
     public static let trueValues: [String] = ["1", "true", "TRUE", "yes", "YES"]
@@ -44,6 +44,11 @@ public enum Constants {
         public static let packageBuildDirectoryName = ".build"
         public static let carthageDirectoryName = "Carthage"
         public static let swiftPackageManagerDirectoryName = "SwiftPackageManager"
+
+        public static let cocoaPodsDirectoryName = "CocoaPods"
+        public static let podfileName = "Podfile"
+        public static let podfileLockName = "Podfile.lock"
+        public static let podsDirectoryName = "Pods"
     }
 
     public enum DerivedDirectory {

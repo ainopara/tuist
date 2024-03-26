@@ -76,7 +76,7 @@ public class Generator: Generating {
                         for (currentTargetName, target) in targets where currentTargetName == targetName {
                             for dependency in target.dependencies {
                                 switch dependency {
-                                case .cocoapod(_, let content):
+                                case .cocoaPods(_, let content):
                                     resultPods.append(content)
                                 case .target(let childTargetName, _) where GenerateCommandHelper.recursivelyFindCocoapodsDependencies:
                                     resultPods.append(contentsOf: fetchTargetPods(targetName: childTargetName))

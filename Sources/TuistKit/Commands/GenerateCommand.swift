@@ -35,7 +35,7 @@ public struct GenerateCommand: AsyncParsableCommand, HasTrackableParameters {
     @Flag(help: "auto run bundle exec pod install")
     var autoPodInstall: Bool = false
 
-    @Flag(inversion: .prefixedNo, help: "Recursively find cocoapods dependencies")
+    @Flag(inversion: .prefixedNo, help: "Recursively find cocoaPods dependencies")
     var recursivelyFindCocoapodsDependencies: Bool = true
     
     public func run() async throws {

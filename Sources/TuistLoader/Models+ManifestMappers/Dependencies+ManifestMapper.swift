@@ -29,12 +29,12 @@ extension TuistGraph.Dependencies {
                 generatorPaths: generatorPaths
             )
         }()
-        let cocoapod: TuistGraph.CocoaPodDependencies? = try {
-            guard let cocoapod = manifest.cocoapod else {
+        let cocoaPods: TuistGraph.CocoaPodsDependencies? = try {
+            guard let cocoaPods = manifest.cocoaPods else {
                 return nil
             }
-            return try TuistGraph.CocoaPodDependencies.from(
-                manifest: cocoapod,
+            return try TuistGraph.CocoaPodsDependencies.from(
+                manifest: cocoaPods,
                 generatorPaths: generatorPaths
             )
         }()
@@ -43,7 +43,7 @@ extension TuistGraph.Dependencies {
         return Self(
             carthage: carthage,
             swiftPackageManager: swiftPackageManager,
-            cocoapod: cocoapod,
+            cocoaPods: cocoaPods,
             platforms: Set(platforms)
         )
     }

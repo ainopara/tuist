@@ -112,15 +112,18 @@ public protocol DependenciesControlling {
 public final class DependenciesController: DependenciesControlling {
     private let carthageInteractor: CarthageInteracting
     private let swiftPackageManagerInteractor: SwiftPackageManagerInteracting
+    private let cocoaPodInteractor: CocoaPodsInteracting
     private let dependenciesGraphController: DependenciesGraphControlling
 
     public init(
         carthageInteractor: CarthageInteracting = CarthageInteractor(),
         swiftPackageManagerInteractor: SwiftPackageManagerInteracting = SwiftPackageManagerInteractor(),
+        cocoaPodInteractor: CocoaPodsInteracting = CocoaPodsInteractor(),
         dependenciesGraphController: DependenciesGraphControlling = DependenciesGraphController()
     ) {
         self.carthageInteractor = carthageInteractor
         self.swiftPackageManagerInteractor = swiftPackageManagerInteractor
+        self.cocoaPodInteractor = cocoaPodInteractor
         self.dependenciesGraphController = dependenciesGraphController
     }
 
@@ -154,6 +157,7 @@ public final class DependenciesController: DependenciesControlling {
                     projectOptions: packageSettings.projectOptions
 
                 ),
+                cocoaPods: nil,
                 platforms: packageSettings.platforms
             ),
             shouldUpdate: false,
@@ -178,6 +182,7 @@ public final class DependenciesController: DependenciesControlling {
                     projectOptions: packageSettings.projectOptions
 
                 ),
+                cocoaPods: nil,
                 platforms: packageSettings.platforms
             ),
             shouldUpdate: true,
@@ -245,6 +250,18 @@ public final class DependenciesController: DependenciesControlling {
                 swiftToolsVersion: swiftVersion
             )
             dependenciesGraph = try dependenciesGraph.merging(with: swiftPackageManagerDependenciesGraph)
+        } else {
+            try swiftPackageManagerInteractor.clean(dependenciesDirectory: dependenciesDirectory)
+        }
+
+        if let cocoaPodDependencies = dependencies.cocoaPods {
+            let cocoaPodDependenciesGraph = try cocoaPodInteractor.install(
+                dependenciesDirectory: dependenciesDirectory,
+                dependencies: cocoaPodDependencies,
+                platforms: platforms,
+                shouldUpdate: shouldUpdate
+            )
+            dependenciesGraph = try dependenciesGraph.merging(with: cocoaPodDependenciesGraph)
         } else {
             try swiftPackageManagerInteractor.clean(dependenciesDirectory: dependenciesDirectory)
         }

@@ -106,9 +106,6 @@ final class FetchService {
             return
         }
 
-//        logger.info("Loading Graph...", metadata: .section)
-//        let graph = try await GeneratorFactory().default().load(path: path)
-
         if update {
             logger.info("Updating dependencies.", metadata: .section)
         } else {

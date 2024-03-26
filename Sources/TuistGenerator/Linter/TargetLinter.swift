@@ -310,8 +310,8 @@ extension TargetDependency {
             return "xcframework"
         case .xctest:
             return "xctest"
-        case .cocoapod:
-            return "cocoapod"
+        case .cocoaPods:
+            return "cocoaPods"
         }
     }
 
@@ -333,8 +333,8 @@ extension TargetDependency {
             return name
         case .xctest:
             return "xctest"
-        case let .cocoapod(_, content):
-            return "cocoapod-\(content)"
+        case let .cocoaPods(_, content):
+            return "cocoaPods-\(content)"
         }
     }
 }

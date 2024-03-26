@@ -35,7 +35,7 @@ public enum TargetDependency: Equatable, Hashable, Codable {
     )
     case package(product: String, type: PackageType, condition: PlatformCondition? = nil)
     case sdk(name: String, status: SDKStatus, condition: PlatformCondition? = nil)
-    case cocoapod(type: PodDependencyType, content: String)
+    case cocoaPods(type: PodDependencyType, content: String)
     case xctest
 
     public var condition: PlatformCondition? {
@@ -54,7 +54,7 @@ public enum TargetDependency: Equatable, Hashable, Codable {
             condition
         case .sdk(name: _, status: _, condition: let condition):
             condition
-        case .xctest, .cocoapod: nil
+        case .xctest, .cocoaPods: nil
         }
     }
 
@@ -75,7 +75,7 @@ public enum TargetDependency: Equatable, Hashable, Codable {
         case .sdk(name: let name, status: let status, condition: _):
             return .sdk(name: name, status: status, condition: condition)
         case .xctest: return .xctest
-        case .cocoapod: return self
+        case .cocoaPods: return self
         }
     }
 }

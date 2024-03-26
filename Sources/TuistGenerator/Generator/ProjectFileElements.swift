@@ -257,16 +257,16 @@ class ProjectFileElements {
                     pbxproj: pbxproj
                 )
             case let .product(target: target, productName: productName, _):
-                guard !target.hasPrefix("Pods-") else {
+                if target.hasPrefix("Pods-") {
                     generatePods(targetName: target, productName: productName, groups: groups, pbxproj: pbxproj)
-                    return
+                } else {
+                    try generateProduct(
+                        targetName: target,
+                        productName: productName,
+                        groups: groups,
+                        pbxproj: pbxproj
+                    )
                 }
-                try generateProduct(
-                    targetName: target,
-                    productName: productName,
-                    groups: groups,
-                    pbxproj: pbxproj
-                )
             }
         }
     }

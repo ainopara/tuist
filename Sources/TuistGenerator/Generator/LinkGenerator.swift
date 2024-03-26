@@ -203,7 +203,7 @@ final class LinkGenerator: LinkGenerating { // swiftlint:disable:this type_body_
                     target: target,
                     condition: condition
                 )
-            case .framework, .library, .project, .sdk, .target, .xcframework, .xctest, .cocoapod:
+            case .framework, .library, .project, .sdk, .target, .xcframework, .xctest, .cocoaPods:
                 break
             }
         }

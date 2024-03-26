@@ -3,18 +3,18 @@ import Foundation
 public struct Dependencies: Equatable {
     public let carthage: CarthageDependencies?
     public let swiftPackageManager: SwiftPackageManagerDependencies?
-    public let cocoapod: CocoaPodDependencies?
+    public let cocoaPods: CocoaPodsDependencies?
     public let platforms: Set<PackagePlatform>
 
     public init(
         carthage: CarthageDependencies?,
         swiftPackageManager: SwiftPackageManagerDependencies?,
-        cocoapod: CocoaPodDependencies?,
+        cocoaPods: CocoaPodsDependencies? = nil,
         platforms: Set<PackagePlatform>
     ) {
         self.carthage = carthage
         self.swiftPackageManager = swiftPackageManager
-        self.cocoapod = cocoapod
+        self.cocoaPods = cocoaPods
         self.platforms = platforms
     }
 }
