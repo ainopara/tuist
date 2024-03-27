@@ -130,7 +130,8 @@ private class DirectoryStructure {
 
     private func isDependencyProject(_ node: Node) -> Bool {
         switch node {
-        case let .project(path): return path.pathString.contains(".build/checkouts")
+        case let .project(path): 
+            return path.pathString.contains(".build/checkouts") || path.pathString.contains("Tuist/Dependencies/CocoaPods")
         case .directory, .file, .folderReference, .virtualGroup: return false
         }
     }
