@@ -70,6 +70,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         try saveDependencies(pathsProvider: pathsProvider)
 
+        // Generate graph
+
         let specs = try readSpecs(pathsProvider: pathsProvider)
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
@@ -155,6 +157,26 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 }
             }()
 
+            let depenencies: [ProjectDescription.TargetDependency] = {
+                var result: [ProjectDescription.TargetDependency] = []
+                
+                if let vendoredFrameworks = spec.vendoredFrameworks {
+                    result += vendoredFrameworks.map {
+                        .framework(path: Path($0), status: .required, condition: nil)
+                    }
+                }
+
+                result += spec.validLibraries.map {
+                    .sdk(name: $0, type: .library, status: .required, condition: nil)
+                }
+
+                result += spec.validFrameworks.map {
+                    .sdk(name: $0, type: .framework, status: .required, condition: nil)
+                }
+
+                return result
+            }()
+
             externalProjects[path] = ProjectDescription.Project(
                 name: spec.name,
                 settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
@@ -190,7 +212,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                                     }
                                 )
                             )
-                        }()
+                        }(),
+                        dependencies: depenencies
                     )
                 ],
                 resourceSynthesizers: []
