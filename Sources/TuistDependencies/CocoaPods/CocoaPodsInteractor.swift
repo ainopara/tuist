@@ -117,112 +117,134 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         for spec in specs {
-            let path = Path(pathsProvider.destinationPodsDirectory.appending(component: spec.name).pathString)
-
-            var specSpecificConfigurations = descriptionConfigurations
-            for (index, _) in specSpecificConfigurations.enumerated() {
-                
-                if let settings = dependencies.targetSettings[spec.name] {
-                    let convertedSettings = convert(settings)
-                    for (key, value) in convertedSettings {
-                        specSpecificConfigurations[index].settings[key] = value
-                    }
-                }
-
-                if let moduleName = spec.moduleName {
-                    specSpecificConfigurations[index].settings["PRODUCT_MODULE_NAME"] = .string(moduleName)
-                }
-                if let moduleMap = spec.moduleMap {
-                    specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
-                } else {
-                    specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
-                }
-            }
-
-            let sourceGlobs: [String] = {
-                if let sourceFileGlobs = spec.validSourceFiles {
-                    return sourceFileGlobs.flatMap { cocoaPodsGlob in Podspec.convertToGlob(from: cocoaPodsGlob) }
-                } else {
-                    return []
-                }
-            }()
-
-            let publicHeaderGlobs: [String] = {
-                if let headerFiles = spec.publicHeaderFiles {
-                    return headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) } +
-                        ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
-                } else {
-                    return sourceGlobs +
-                        ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
-                }
-            }()
-
-            let depenencies: [ProjectDescription.TargetDependency] = {
-                var result: [ProjectDescription.TargetDependency] = []
-                
-                if let vendoredFrameworks = spec.vendoredFrameworks {
-                    result += vendoredFrameworks.map {
-                        .framework(path: Path($0), status: .required, condition: nil)
-                    }
-                }
-
-                result += spec.validLibraries.map {
-                    .sdk(name: $0, type: .library, status: .required, condition: nil)
-                }
-
-                result += spec.validFrameworks.map {
-                    .sdk(name: $0, type: .framework, status: .required, condition: nil)
-                }
-
-                return result
-            }()
-
-            externalProjects[path] = ProjectDescription.Project(
-                name: spec.name,
-                settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
-                targets: [
-                    Target(
-                        name: spec.name,
-                        destinations: .iOS,
-                        product: .staticFramework,
-                        productName: spec.moduleName,
-                        bundleId: "org.cocoapods.\(spec.name)",
-                        infoPlist: .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
-                        sources: {
-                            if !sourceGlobs.isEmpty {
-                                return ProjectDescription.SourceFilesList(globs: sourceGlobs.map { ProjectDescription.SourceFileGlob.glob(Path($0)) })
-                            } else {
-                                return nil
-                            }
-                        }(),
-                        headers: {
-                            return ProjectDescription.Headers.headers(
-                                public: FileList.list(
-                                    publicHeaderGlobs.map { (glob: String) -> FileListGlob in
-                                        ProjectDescription.FileListGlob.glob(Path(glob))
-                                    }
-                                ),
-                                private: [],
-                                project: FileList.list(
-                                    sourceGlobs.map { (glob: String) -> FileListGlob in
-                                        ProjectDescription.FileListGlob.glob(
-                                            Path(glob),
-                                            excluding: publicHeaderGlobs.map { Path($0) }
-                                        )
-                                    }
-                                )
-                            )
-                        }(),
-                        dependencies: depenencies
+            if isWrapperPod(spec) {
+                externalDependencies[spec.name] = spec.validVendoredFrameworks.map {
+                    let path = Path(
+                        pathsProvider.destinationPodsDirectory
+                            .appending(component: spec.name)
+                            .appending(try! RelativePath(validating: $0))
+                            .pathString
                     )
-                ],
-                resourceSynthesizers: []
-            )
-            externalDependencies[spec.name] = [
-                .project(target: spec.name, path: path, condition: nil)
-            ]
+                    if $0.hasSuffix("xcframework") {
+                        return .xcframework(path: path, status: .required, condition: nil)
+                    } else {
+                        return .framework(path: path, status: .required, condition: nil)
+                    }
+                }
+            } else {
+                let path = Path(pathsProvider.destinationPodsDirectory.appending(component: spec.name).pathString)
+
+                var specSpecificConfigurations = descriptionConfigurations
+                for (index, _) in specSpecificConfigurations.enumerated() {
+
+                    if let settings = dependencies.targetSettings[spec.name] {
+                        let convertedSettings = convert(settings)
+                        for (key, value) in convertedSettings {
+                            specSpecificConfigurations[index].settings[key] = value
+                        }
+                    }
+
+                    if let moduleName = spec.moduleName {
+                        specSpecificConfigurations[index].settings["PRODUCT_MODULE_NAME"] = .string(moduleName)
+                    }
+                    if let moduleMap = spec.moduleMap {
+                        specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
+                    } else {
+                        specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
+                    }
+                }
+
+                let sourceGlobs: [String] = spec.validSourceFiles.flatMap { cocoaPodsGlob in
+                    Podspec.convertToGlob(from: cocoaPodsGlob)
+                }
+
+                let publicHeaderGlobs: [String] = {
+                    if let headerFiles = spec.publicHeaderFiles {
+                        return headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) } +
+                            ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                    } else {
+                        return sourceGlobs +
+                            ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                    }
+                }()
+
+                let depenencies: [ProjectDescription.TargetDependency] = {
+                    var result: [ProjectDescription.TargetDependency] = []
+
+                    result += spec.validVendoredFrameworks.map {
+                        if $0.hasSuffix("xcframework") {
+                            return .xcframework(path: Path($0), status: .required, condition: nil)
+                        } else {
+                            return .framework(path: Path($0), status: .required, condition: nil)
+                        }
+                    }
+
+                    result += spec.validLibraries.map {
+                        .sdk(name: $0, type: .library, status: .required, condition: nil)
+                    }
+
+                    result += spec.validFrameworks.map {
+                        .sdk(name: $0, type: .framework, status: .required, condition: nil)
+                    }
+
+                    return result
+                }()
+
+                let shouldGenerateInfoPlist: Bool = spec.validVendoredFrameworks.contains(where: { $0.hasSuffix(".xcframework") })
+
+                externalProjects[path] = ProjectDescription.Project(
+                    name: spec.name,
+                    settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
+                    targets: [
+                        Target(
+                            name: spec.name,
+                            destinations: .iOS,
+                            product: .staticFramework,
+                            productName: spec.moduleName,
+                            bundleId: "org.cocoapods.\(spec.name)",
+                            infoPlist: shouldGenerateInfoPlist ? .default : .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
+                            sources: {
+                                if !sourceGlobs.isEmpty {
+                                    return ProjectDescription.SourceFilesList(globs: sourceGlobs.map { ProjectDescription.SourceFileGlob.glob(Path($0)) })
+                                } else {
+                                    return nil
+                                }
+                            }(),
+                            headers: {
+                                return ProjectDescription.Headers.headers(
+                                    public: FileList.list(
+                                        publicHeaderGlobs.map { (glob: String) -> FileListGlob in
+                                            ProjectDescription.FileListGlob.glob(Path(glob))
+                                        }
+                                    ),
+                                    private: [],
+                                    project: FileList.list(
+                                        sourceGlobs.map { (glob: String) -> FileListGlob in
+                                            ProjectDescription.FileListGlob.glob(
+                                                Path(glob),
+                                                excluding: publicHeaderGlobs.map { Path($0) }
+                                            )
+                                        }
+                                    )
+                                )
+                            }(),
+                            dependencies: depenencies
+                        )
+                    ],
+                    resourceSynthesizers: shouldGenerateInfoPlist ? [.plists()] : []
+                )
+                externalDependencies[spec.name] = [
+                    .project(target: spec.name, path: path, condition: nil)
+                ]
+            }
         }
         return .init(externalDependencies: externalDependencies, externalProjects: externalProjects)
+    }
+
+    func isWrapperPod(_ spec: Podspec) -> Bool {
+        let noSource = spec.validSourceFiles.isEmpty
+        let hasVendoredFramework = !spec.validVendoredFrameworks.isEmpty
+        return noSource && hasVendoredFramework
     }
 
     public func clean(dependenciesDirectory: AbsolutePath) throws {

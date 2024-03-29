@@ -102,27 +102,7 @@ public struct Podspec: Decodable {
 }
 
 public extension Podspec {
-    var validSourceFiles: [String]? {
-        var result: [String] = []
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                if let subspecValidSourceFiles = subspec.validSourceFiles {
-                    result.append(contentsOf: subspecValidSourceFiles)
-                }
-            }
-        }
-        if let sourceFiles = sourceFiles {
-            result.append(contentsOf: sourceFiles)
-        }
-        if
-            let ios = ios,
-            let files = ios.sourceFiles
-        {
-            result.append(contentsOf: files)
-        }
-        return result
-    }
-
+    
     static func convertToGlob(from cocoapodsGlob: String) -> [String] {
         let regex = try! NSRegularExpression(pattern: "(.*)\\{(.+)\\}")
         let nsrange = NSRange(cocoapodsGlob.startIndex..<cocoapodsGlob.endIndex, in: cocoapodsGlob)
@@ -144,6 +124,27 @@ public extension Podspec {
             results.append(cocoapodsGlob)
         }
         return results
+    }
+
+    var validSourceFiles: [String] {
+        var result: [String] = []
+        if let subspecs = subspecs {
+            for subspec in subspecs {
+                if let subspecValidSourceFiles = subspec.validSourceFiles {
+                    result.append(contentsOf: subspecValidSourceFiles)
+                }
+            }
+        }
+        if let sourceFiles = sourceFiles {
+            result.append(contentsOf: sourceFiles)
+        }
+        if
+            let ios = ios,
+            let files = ios.sourceFiles
+        {
+            result.append(contentsOf: files)
+        }
+        return result
     }
 
     var validRequiresArc: [String] {
@@ -249,6 +250,19 @@ public extension Podspec {
             }
         }
         return Array(Set(result))
+    }
+
+    var validVendoredFrameworks: [String] {
+        var result: Set<String> = []
+        result.formUnion(vendoredFrameworks ?? [])
+        result.formUnion(ios?.vendoredFrameworks ?? [])
+        if let subspecs = subspecs {
+            let integratedSubspecs = defaultSubspecs ?? subspecs.map(\.name)
+            for subspec in subspecs where integratedSubspecs.contains(subspec.name) {
+                result.formUnion(subspec.vendoredFrameworks ?? [])
+            }
+        }
+        return Array(result).sorted()
     }
 
     var validPodTargetXcconfig: [String: ImplicitStringList] {
