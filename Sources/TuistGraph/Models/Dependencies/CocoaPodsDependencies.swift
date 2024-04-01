@@ -3,13 +3,14 @@ import Foundation
 public struct CocoaPodsDependencies: Equatable {
 
     public enum Pod: Equatable, Codable {
-        case remote(name: String, source: PodSource)
+        case remote(name: String, source: PodSource, subspecs: [String]?)
     }
 
     public enum PodSource: Codable, Equatable {
-        case tag(String)
-        case branch(String)
-        case revision(String)
+        case version(String)
+        case podspec(path: String)
+        case gitWithTag(source: String, tag: String)
+        case gitWithCommit(source: String, commit: String)
     }
 
     public let pods: [Pod]

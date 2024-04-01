@@ -31,6 +31,8 @@ public struct Subspec: Decodable {
     public let tvos: PlatformConfig?
     @ImplicitStringList
     public var vendoredFrameworks: [String]?
+    @ImplicitStringList
+    public var vendoredLibraries: [String]?
     public var weakFrameworks: String?
     public let podTargetXcconfig: [String: ImplicitStringList]?
     public let subspecs: [Subspec]?
@@ -52,6 +54,7 @@ public struct Subspec: Decodable {
         case watchos
         case tvos
         case vendoredFrameworks = "vendored_frameworks"
+        case vendoredLibraries = "vendored_libraries"
         case weakFrameworks = "weak_frameworks"
         case podTargetXcconfig = "pod_target_xcconfig"
         case subspecs

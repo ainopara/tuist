@@ -19,6 +19,8 @@ public struct PlatformConfig: Decodable {
     @ImplicitStringList
     public var vendoredFrameworks: [String]?
     @ImplicitStringList
+    public var vendoredLibraries: [String]?
+    @ImplicitStringList
     public var libraries: [String]?
 
     private enum CodingKeys: String, CodingKey {
@@ -28,6 +30,7 @@ public struct PlatformConfig: Decodable {
         case sourceFiles = "source_files"
         case excludeFiles = "exclude_files"
         case vendoredFrameworks = "vendored_frameworks"
+        case vendoredLibraries = "vendored_libraries"
         case libraries
     }
 }

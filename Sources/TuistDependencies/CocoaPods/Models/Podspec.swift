@@ -265,6 +265,19 @@ public extension Podspec {
         return Array(result).sorted()
     }
 
+    var validVendoredLibrary: [String] {
+        var result: Set<String> = []
+        result.formUnion(vendoredLibraries ?? [])
+        result.formUnion(ios?.vendoredFrameworks ?? [])
+        if let subspecs = subspecs {
+            let integratedSubspecs = defaultSubspecs ?? subspecs.map(\.name)
+            for subspec in subspecs where integratedSubspecs.contains(subspec.name) {
+                result.formUnion(subspec.vendoredLibraries ?? [])
+            }
+        }
+        return Array(result).sorted()
+    }
+
     var validPodTargetXcconfig: [String: ImplicitStringList] {
         var result: [String: ImplicitStringList] = [:]
         if let podTargetXcconfig = podTargetXcconfig {

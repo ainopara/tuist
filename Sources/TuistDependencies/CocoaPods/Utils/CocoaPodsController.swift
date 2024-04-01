@@ -38,7 +38,7 @@ public final class CocoaPodsController: CocoaPodsControlling {
 
     public func install(at path: AbsolutePath, printOutput: Bool) throws {
 
-        let command = buildCocoaPodsCommand(path: path, subcommand: "install")
+        let command = buildCocoaPodsCommand(path: path, subcommand: "install", arguments: ["--repo-update"])
 
         if printOutput {
             try System.shared.runAndPrint(command, verbose: false, environment: defaultEnv)
@@ -60,7 +60,7 @@ public final class CocoaPodsController: CocoaPodsControlling {
 
     // MARK: - Helpers
 
-    private func buildCocoaPodsCommand(path: AbsolutePath, subcommand: String) -> [String] {
+    private func buildCocoaPodsCommand(path: AbsolutePath, subcommand: String, arguments: [String] = []) -> [String] {
         let commandComponents: [String] = [
             "/Users/ainopara/.rbenv/shims/bundle",
             "exec",
@@ -68,6 +68,6 @@ public final class CocoaPodsController: CocoaPodsControlling {
             subcommand
         ]
 
-        return commandComponents
+        return commandComponents + arguments
     }
 }

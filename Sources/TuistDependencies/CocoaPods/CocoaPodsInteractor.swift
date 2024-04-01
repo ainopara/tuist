@@ -71,8 +71,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         try saveDependencies(pathsProvider: pathsProvider)
 
         // Generate graph
-
         let specs = try readSpecs(pathsProvider: pathsProvider)
+
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
 
@@ -116,21 +116,35 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
 
-        for spec in specs {
-            if isWrapperPod(spec) {
-                externalDependencies[spec.name] = spec.validVendoredFrameworks.map {
-                    let path = Path(
-                        pathsProvider.destinationPodsDirectory
-                            .appending(component: spec.name)
-                            .appending(try! RelativePath(validating: $0))
-                            .pathString
-                    )
-                    if $0.hasSuffix("xcframework") {
-                        return .xcframework(path: path, status: .required, condition: nil)
+        func expandVendoredFramework(spec: Podspec) -> [ProjectDescription.TargetDependency] {
+            return spec.validVendoredFrameworks.flatMap { glob -> [ProjectDescription.TargetDependency] in
+                let pathString = pathsProvider.destinationPodsDirectory
+                    .appending(component: spec.name)
+                    .appending(try! RelativePath(validating: glob))
+                    .pathString
+
+                if pathString.contains("*") {
+                    return Array(Glob(pattern: pathString))
+                        .map { path in
+                            if path.hasSuffix("xcframework") {
+                                return .xcframework(path: Path(path), status: .required, condition: nil)
+                            } else {
+                                return .framework(path: Path(path), status: .required, condition: nil)
+                            }
+                        }
+                } else {
+                    if pathString.hasSuffix("xcframework") {
+                        return [.xcframework(path: Path(pathString), status: .required, condition: nil)]
                     } else {
-                        return .framework(path: path, status: .required, condition: nil)
+                        return [.framework(path: Path(pathString), status: .required, condition: nil)]
                     }
                 }
+            }
+        }
+
+        for spec in specs {
+            if isWrapperPod(spec) {
+                externalDependencies[spec.name] = expandVendoredFramework(spec: spec)
             } else {
                 let path = Path(pathsProvider.destinationPodsDirectory.appending(component: spec.name).pathString)
 
@@ -171,13 +185,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 let depenencies: [ProjectDescription.TargetDependency] = {
                     var result: [ProjectDescription.TargetDependency] = []
 
-                    result += spec.validVendoredFrameworks.map {
-                        if $0.hasSuffix("xcframework") {
-                            return .xcframework(path: Path($0), status: .required, condition: nil)
-                        } else {
-                            return .framework(path: Path($0), status: .required, condition: nil)
-                        }
-                    }
+                    result += expandVendoredFramework(spec: spec)
 
                     result += spec.validLibraries.map {
                         .sdk(name: $0, type: .library, status: .required, condition: nil)
@@ -185,6 +193,15 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
                     result += spec.validFrameworks.map {
                         .sdk(name: $0, type: .framework, status: .required, condition: nil)
+                    }
+
+                    result += spec.validDependenciesKeys.map { dependencyName in
+                        if dependencyName.contains("/") {
+                            // Convert subspec dependencies like "GTM/zlib" to "GTM"
+                            return .external(name: String(dependencyName.split(separator: "/").first!))
+                        } else {
+                            return .external(name: dependencyName)
+                        }
                     }
 
                     return result
@@ -201,7 +218,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                             destinations: .iOS,
                             product: .staticFramework,
                             productName: spec.moduleName,
-                            bundleId: "org.cocoapods.\(spec.name)",
+                            bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
                             infoPlist: shouldGenerateInfoPlist ? .default : .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
                             sources: {
                                 if !sourceGlobs.isEmpty {
@@ -244,7 +261,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
     func isWrapperPod(_ spec: Podspec) -> Bool {
         let noSource = spec.validSourceFiles.isEmpty
         let hasVendoredFramework = !spec.validVendoredFrameworks.isEmpty
-        return noSource && hasVendoredFramework
+        let hasVendoredLibrary = !spec.validVendoredLibrary.isEmpty
+        return noSource && (hasVendoredFramework || hasVendoredLibrary)
     }
 
     public func clean(dependenciesDirectory: AbsolutePath) throws {
@@ -330,16 +348,25 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         for dependency in dependencies.pods {
             switch dependency {
-            case .remote(let name, let source):
-                podfile += "  pod '\(name)'"
+            case .remote(let name, let source, let subspecs):
+                podfile += "  pod '\(name)', "
+
                 switch source {
-                case .tag(let tag):
-                    podfile += ", '\(tag)'"
-                case .branch(let branch):
-                    podfile += ", '\(branch)'"
-                case .revision(let revision):
-                    podfile += ", '\(revision)'"
+                case .version(let version):
+                    podfile += "'\(version)'"
+                case .podspec(let path):
+                    podfile += ":podspec => '../../../\(path)'"
+                case .gitWithTag(let source, let tag):
+                    podfile += ":git => '\(source)', :tag => '\(tag)'"
+                case .gitWithCommit(let source, let commit):
+                    podfile += ":git => '\(source)', :commit => '\(commit)'"
                 }
+
+                if let subspecs {
+                    let quoted = subspecs.map { "'\($0)'" }
+                    podfile += ", :subspecs => [\(quoted.joined(separator: ", "))]"
+                }
+
                 podfile += "\n"
             }
         }

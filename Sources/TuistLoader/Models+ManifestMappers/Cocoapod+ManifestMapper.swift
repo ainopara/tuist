@@ -28,8 +28,12 @@ extension TuistGraph.CocoaPodsDependencies {
 extension TuistGraph.CocoaPodsDependencies.Pod {
     static func from(manifest: ProjectDescription.Pod) throws -> Self {
         switch manifest {
-        case .remote(let name, let source):
-            return .remote(name: name, source: try CocoaPodsDependencies.PodSource.from(manifest: source))
+        case .remote(let name, let source, let subspecs):
+            return .remote(
+                name: name,
+                source: try CocoaPodsDependencies.PodSource.from(manifest: source),
+                subspecs: subspecs
+            )
         }
     }
 }
@@ -37,12 +41,14 @@ extension TuistGraph.CocoaPodsDependencies.Pod {
 extension TuistGraph.CocoaPodsDependencies.PodSource {
     static func from(manifest: ProjectDescription.PodSource) throws -> Self {
         switch manifest {
-        case .tag(let tag):
-            return .tag(tag)
-        case .branch(let branch):
-            return .branch(branch)
-        case .revision(let revision):
-            return .revision(revision)
+        case .version(let version):
+            return .version(version)
+        case .podspec(let path):
+            return .podspec(path: path)
+        case .gitWithTag(let source, let tag):
+            return .gitWithTag(source: source, tag: tag)
+        case .gitWithCommit(let source, let commit):
+            return .gitWithCommit(source: source, commit: commit)
         }
     }
 }
