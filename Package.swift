@@ -211,6 +211,12 @@ var targets: [Target] = [
             swiftToolsSupportDependency,
         ]
     ),
+    .testTarget(
+        name: "TuistDependenciesCocoapodsTests",
+        dependencies: [
+            "TuistDependencies"
+        ]
+    ),
     .target(
         name: "TuistMigration",
         dependencies: [

@@ -24,6 +24,8 @@ public struct Subspec: Decodable {
     public var excludeFiles: [String]?
     public let xcconfig: [String: ImplicitStringList]?
     @ImplicitStringList
+    public var compilerFlags: [String]?
+    @ImplicitStringList
     public var publicHeaderFiles: [String]?
     public let ios: PlatformConfig?
     public let osx: PlatformConfig?
@@ -33,10 +35,22 @@ public struct Subspec: Decodable {
     public var vendoredFrameworks: [String]?
     @ImplicitStringList
     public var vendoredLibraries: [String]?
-    public var weakFrameworks: String?
+    @ImplicitStringList
+    public var weakFrameworks: [String]?
     public let podTargetXcconfig: [String: ImplicitStringList]?
     public let subspecs: [Subspec]?
     public let requiresArc: BoolOrImplicitStringList?
+    public var userTargetXcconfig: [String: ImplicitStringList]?
+    public var prefixHeaderFile: Bool?
+    public var moduleName: String?
+    public var headerDir: String?
+    public var headerMappingsDir: String?
+    public var resourceBundles: [String: ImplicitStringList]?
+    @ImplicitStringList
+    public var resources: [String]?
+    @ImplicitStringList
+    public var preservePaths: [String]?
+    public var moduleMap: String?
 
     private enum CodingKeys: String, CodingKey {
         case name
@@ -59,6 +73,16 @@ public struct Subspec: Decodable {
         case podTargetXcconfig = "pod_target_xcconfig"
         case subspecs
         case requiresArc = "requires_arc"
+        case compilerFlags = "compiler_flags"
+        case userTargetXcconfig = "user_target_xcconfig"
+        case prefixHeaderFile = "prefix_header_file"
+        case moduleName = "module_name"
+        case headerDir = "header_dir"
+        case headerMappingsDir = "header_mappings_dir"
+        case preservePaths = "preserve_paths"
+        case resourceBundles = "resource_bundles"
+        case resources
+        case moduleMap
     }
 }
 

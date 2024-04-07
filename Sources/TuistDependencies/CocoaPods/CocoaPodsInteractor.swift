@@ -143,7 +143,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         for spec in specs {
-            if isWrapperPod(spec) {
+            if spec.isWrapperPod {
                 externalDependencies[spec.name] = expandVendoredFramework(spec: spec)
             } else {
                 let path = Path(pathsProvider.destinationPodsDirectory.appending(component: spec.name).pathString)
@@ -173,13 +173,17 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 }
 
                 let publicHeaderGlobs: [String] = {
+                    var result: [String] = []
                     if let headerFiles = spec.publicHeaderFiles {
-                        return headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) } +
-                            ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                        result += headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) }
                     } else {
-                        return sourceGlobs +
-                            ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                        result += sourceGlobs
                     }
+                    if let headerDir = spec.headerDir {
+                        result += Podspec.convertToGlob(from: headerDir)
+                    }
+                    result += ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                    return result
                 }()
 
                 let depenencies: [ProjectDescription.TargetDependency] = {
@@ -207,7 +211,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     return result
                 }()
 
-                let shouldGenerateInfoPlist: Bool = spec.validVendoredFrameworks.contains(where: { $0.hasSuffix(".xcframework") })
+                // TODO: alway generate info plist for now
+                let shouldGenerateInfoPlist: Bool = true || spec.isAggregatePod
 
                 externalProjects[path] = ProjectDescription.Project(
                     name: spec.name,
@@ -256,13 +261,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
         return .init(externalDependencies: externalDependencies, externalProjects: externalProjects)
-    }
-
-    func isWrapperPod(_ spec: Podspec) -> Bool {
-        let noSource = spec.validSourceFiles.isEmpty
-        let hasVendoredFramework = !spec.validVendoredFrameworks.isEmpty
-        let hasVendoredLibrary = !spec.validVendoredLibrary.isEmpty
-        return noSource && (hasVendoredFramework || hasVendoredLibrary)
     }
 
     public func clean(dependenciesDirectory: AbsolutePath) throws {

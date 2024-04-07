@@ -9,55 +9,64 @@ import Foundation
 
 public struct Podspec: Decodable {
 
-    public let name: String
+    public let rootspec: Subspec
+    public let subspecs: [Subspec]?
+    public let defaultSubspecs: [String]?
     public let version: String
     public let swiftVersion: String?
     public let cocoapodsVersion: String?
     public let prepareCommand: String?
     public let staticFramework: Bool?
-    public let platforms: PodspecPlatform?
-    public let dependencies: [String: ImplicitStringList]?
-    @ImplicitStringList
-    public var frameworks: [String]?
-    public var weakFrameworks: String?
-    @ImplicitStringList
-    public var libraries: [String]?
-    public let compilerFlags: String?
-    public let podTargetXcconfig: [String: ImplicitStringList]?
-    public let userTargetXcconfig: [String: ImplicitStringList]?
-    public let prefixHeaderFile: Bool?
-    public let moduleName: String?
-    public let headerDir: String?
-    public let headerMappingsDir: String?
-    @ImplicitStringList
-    public var sourceFiles: [String]?
-    @ImplicitStringList
-    public var publicHeaderFiles: [String]?
-    @ImplicitStringList
-    public var privateHeaderFiles: [String]?
-    @ImplicitStringList
-    public var vendoredFrameworks: [String]?
-    @ImplicitStringList
-    public var vendoredLibraries: [String]?
-    public let resourceBundles: [String: ImplicitStringList]?
-    @ImplicitStringList
-    public var resources: [String]?
-    @ImplicitStringList
-    public var excludeFiles: [String]?
-    @ImplicitStringList
-    public var preservePaths: [String]?
-    public let moduleMap: String?
     public let requiresAppHost: Bool?
     public let scheme: [String: Bool]?
-    @ImplicitStringList
-    public var defaultSubspecs: [String]?
-    public let ios: PlatformConfig?
-    public let osx: PlatformConfig?
-    public let watchos: PlatformConfig?
-    public let tvos: PlatformConfig?
-    public let subspecs: [Subspec]?
-    public let requiresArc: BoolOrImplicitStringList?
-    public let xcconfig: [String: ImplicitStringList]?
+
+    public var name: String { rootspec.name }
+    public var platforms: PodspecPlatform? { rootspec.platforms }
+    public var dependencies: [String: ImplicitStringList]? { rootspec.dependencies }
+    public var frameworks: [String]? { rootspec.frameworks }
+    public var weakFrameworks: [String]? { rootspec.weakFrameworks }
+    public var libraries: [String]? { rootspec.libraries }
+    public var compilerFlags: [String]? { rootspec.compilerFlags }
+    public var podTargetXcconfig: [String: ImplicitStringList]? { rootspec.podTargetXcconfig }
+    public var userTargetXcconfig: [String: ImplicitStringList]? { rootspec.userTargetXcconfig }
+    public var prefixHeaderFile: Bool? { rootspec.prefixHeaderFile }
+    public var moduleName: String? { rootspec.moduleName }
+    public var headerDir: String? { rootspec.headerDir }
+    public var headerMappingsDir: String? { rootspec.headerMappingsDir }
+    public var sourceFiles: [String]? { rootspec.sourceFiles }
+    public var publicHeaderFiles: [String]? { rootspec.publicHeaderFiles }
+    public var privateHeaderFiles: [String]? { rootspec.privateHeaderFiles }
+    public var vendoredFrameworks: [String]? { rootspec.vendoredFrameworks }
+    public var vendoredLibraries: [String]? { rootspec.vendoredLibraries }
+    public var excludeFiles: [String]? { rootspec.excludeFiles }
+    public var resourceBundles: [String: ImplicitStringList]? { rootspec.resourceBundles }
+    public var resources: [String]? { rootspec.resources }
+    public var preservePaths: [String]? { rootspec.preservePaths }
+    public var moduleMap: String? { rootspec.moduleMap }
+    public var requiresArc: BoolOrImplicitStringList? { rootspec.requiresArc }
+    public var xcconfig: [String: ImplicitStringList]? { rootspec.xcconfig }
+
+    public var ios: PlatformConfig? { rootspec.ios }
+    public var osx: PlatformConfig? { rootspec.osx }
+    public var watchos: PlatformConfig? { rootspec.watchos }
+    public var tvos: PlatformConfig? { rootspec.tvos }
+
+    public init(from decoder: any Decoder) throws {
+        
+        let singleValueContainer = try decoder.singleValueContainer()
+        self.rootspec = try singleValueContainer.decode(Subspec.self)
+        
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.subspecs = try container.decodeIfPresent([Subspec].self, forKey: .subspecs)
+        self.defaultSubspecs = try container.decode(ImplicitStringList.self, forKey: .defaultSubspecs).wrappedValue
+        self.version = try container.decode(String.self, forKey: .version)
+        self.swiftVersion = try container.decodeIfPresent(String.self, forKey: .swiftVersion)
+        self.cocoapodsVersion = try container.decodeIfPresent(String.self, forKey: .cocoapodsVersion)
+        self.prepareCommand = try container.decodeIfPresent(String.self, forKey: .prepareCommand)
+        self.staticFramework = try container.decodeIfPresent(Bool.self, forKey: .staticFramework)
+        self.scheme = try container.decodeIfPresent([String: Bool].self, forKey: .scheme)
+        self.requiresAppHost = try container.decodeIfPresent(Bool.self, forKey: .requiresAppHost)
+    }
 
     private enum CodingKeys: String, CodingKey {
         case name
@@ -128,22 +137,14 @@ public extension Podspec {
 
     var validSourceFiles: [String] {
         var result: [String] = []
+        result += self.sourceFiles ?? []
+        result += self.ios?.sourceFiles ?? []
         if let subspecs = subspecs {
             for subspec in subspecs {
-                if let subspecValidSourceFiles = subspec.validSourceFiles {
-                    result.append(contentsOf: subspecValidSourceFiles)
-                }
+                result += subspec.validSourceFiles ?? []
             }
         }
-        if let sourceFiles = sourceFiles {
-            result.append(contentsOf: sourceFiles)
-        }
-        if
-            let ios = ios,
-            let files = ios.sourceFiles
-        {
-            result.append(contentsOf: files)
-        }
+
         return result
     }
 
@@ -311,6 +312,18 @@ public extension Podspec {
     
     var targetName: String {
         moduleName ?? name.replacingOccurrences(of: "-", with: "_")
+    }
+
+    var isWrapperPod: Bool {
+        let noSource = validSourceFiles.isEmpty
+        let hasVendoredFramework = !validVendoredFrameworks.isEmpty
+        let hasVendoredLibrary = !validVendoredLibrary.isEmpty
+        return noSource && (hasVendoredFramework || hasVendoredLibrary)
+    }
+
+    var isAggregatePod: Bool {
+        let noSource = validSourceFiles.isEmpty
+        return noSource
     }
 }
 

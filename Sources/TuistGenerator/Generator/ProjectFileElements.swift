@@ -79,6 +79,7 @@ class ProjectFileElements {
             GraphDependencyReference.product(target: $0.name, productName: $0.productNameWithExtension, condition: nil)
         }
 
+        print(">>> \(project.path.pathString)")
         // Dependencies
         let dependencies = try graphTraverser.allProjectDependencies(path: project.path).sorted()
 
