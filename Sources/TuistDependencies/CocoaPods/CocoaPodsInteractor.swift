@@ -76,15 +76,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
 
-        func convert(_ settingsDictionary: TuistGraph.SettingsDictionary) -> ProjectDescription.SettingsDictionary {
-            settingsDictionary.mapValues {
-                switch $0 {
-                case .array(let array): return .array(array)
-                case .string(let string): return .string(string)
-                }
-            }
-        }
-
         let descriptionBaseSettings: ProjectDescription.SettingsDictionary = convert(dependencies.baseSettings.base)
 
         var descriptionConfigurations: [ProjectDescription.Configuration] = []
@@ -116,155 +107,186 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
 
-        func expandVendoredFramework(spec: Podspec) -> [ProjectDescription.TargetDependency] {
-            return spec.validVendoredFrameworks.flatMap { glob -> [ProjectDescription.TargetDependency] in
-                let pathString = pathsProvider.destinationPodsDirectory
-                    .appending(component: spec.name)
-                    .appending(try! RelativePath(validating: glob))
-                    .pathString
-
-                if pathString.contains("*") {
-                    return Array(Glob(pattern: pathString))
-                        .map { path in
-                            if path.hasSuffix("xcframework") {
-                                return .xcframework(path: Path(path), status: .required, condition: nil)
-                            } else {
-                                return .framework(path: Path(path), status: .required, condition: nil)
-                            }
-                        }
-                } else {
-                    if pathString.hasSuffix("xcframework") {
-                        return [.xcframework(path: Path(pathString), status: .required, condition: nil)]
-                    } else {
-                        return [.framework(path: Path(pathString), status: .required, condition: nil)]
-                    }
-                }
-            }
+        var subspecDictionarry: [String: [String]] = [:]
+        for case .remote(let name, let source, let subpsecs) in dependencies.pods {
+            subspecDictionarry[name] = subpsecs
         }
 
+
         for spec in specs {
-            if spec.isWrapperPod {
-                externalDependencies[spec.name] = expandVendoredFramework(spec: spec)
-            } else {
-                let path = Path(pathsProvider.destinationPodsDirectory.appending(component: spec.name).pathString)
-
-                var specSpecificConfigurations = descriptionConfigurations
-                for (index, _) in specSpecificConfigurations.enumerated() {
-
-                    if let settings = dependencies.targetSettings[spec.name] {
-                        let convertedSettings = convert(settings)
-                        for (key, value) in convertedSettings {
-                            specSpecificConfigurations[index].settings[key] = value
-                        }
-                    }
-
-                    if let moduleName = spec.moduleName {
-                        specSpecificConfigurations[index].settings["PRODUCT_MODULE_NAME"] = .string(moduleName)
-                    }
-                    if let moduleMap = spec.moduleMap {
-                        specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
-                    } else {
-                        specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
-                    }
-                }
-
-                let sourceGlobs: [String] = spec.validSourceFiles.flatMap { cocoaPodsGlob in
-                    Podspec.convertToGlob(from: cocoaPodsGlob)
-                }
-
-                let publicHeaderGlobs: [String] = {
-                    var result: [String] = []
-                    if let headerFiles = spec.publicHeaderFiles {
-                        result += headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) }
-                    } else {
-                        result += sourceGlobs
-                    }
-                    if let headerDir = spec.headerDir {
-                        result += Podspec.convertToGlob(from: headerDir)
-                    }
-                    result += ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
-                    return result
-                }()
-
-                let depenencies: [ProjectDescription.TargetDependency] = {
-                    var result: [ProjectDescription.TargetDependency] = []
-
-                    result += expandVendoredFramework(spec: spec)
-
-                    result += spec.validLibraries.map {
-                        .sdk(name: $0, type: .library, status: .required, condition: nil)
-                    }
-
-                    result += spec.validFrameworks.map {
-                        .sdk(name: $0, type: .framework, status: .required, condition: nil)
-                    }
-
-                    result += spec.validDependenciesKeys.map { dependencyName in
-                        if dependencyName.contains("/") {
-                            // Convert subspec dependencies like "GTM/zlib" to "GTM"
-                            return .external(name: String(dependencyName.split(separator: "/").first!))
-                        } else {
-                            return .external(name: dependencyName)
-                        }
-                    }
-
-                    return result
-                }()
-
-                // TODO: alway generate info plist for now
-                let shouldGenerateInfoPlist: Bool = true || spec.isAggregatePod
-
-                externalProjects[path] = ProjectDescription.Project(
-                    name: spec.name,
-                    settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
-                    targets: [
-                        Target(
-                            name: spec.name,
-                            destinations: .iOS,
-                            product: .staticFramework,
-                            productName: spec.moduleName,
-                            bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
-                            infoPlist: shouldGenerateInfoPlist ? .default : .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
-                            sources: {
-                                if !sourceGlobs.isEmpty {
-                                    return ProjectDescription.SourceFilesList(globs: sourceGlobs.map { ProjectDescription.SourceFileGlob.glob(Path($0)) })
-                                } else {
-                                    return nil
-                                }
-                            }(),
-                            headers: {
-                                return ProjectDescription.Headers.headers(
-                                    public: FileList.list(
-                                        publicHeaderGlobs.map { (glob: String) -> FileListGlob in
-                                            ProjectDescription.FileListGlob.glob(Path(glob))
-                                        }
-                                    ),
-                                    private: [],
-                                    project: FileList.list(
-                                        sourceGlobs.map { (glob: String) -> FileListGlob in
-                                            ProjectDescription.FileListGlob.glob(
-                                                Path(glob),
-                                                excluding: publicHeaderGlobs.map { Path($0) }
-                                            )
-                                        }
-                                    )
-                                )
-                            }(),
-                            dependencies: depenencies
-                        )
-                    ],
-                    resourceSynthesizers: shouldGenerateInfoPlist ? [.plists()] : []
-                )
-                externalDependencies[spec.name] = [
-                    .project(target: spec.name, path: path, condition: nil)
-                ]
-            }
+            let resolvedSpec = spec.resolvePodspec(selectedSubspecs: subspecDictionarry[spec.name])
+            let (specProject, specDependencies) = generateProjectDescription(
+                for: resolvedSpec,
+                descriptionBaseSettings: descriptionBaseSettings,
+                descriptionConfigurations: descriptionConfigurations,
+                targetSettings: dependencies.targetSettings,
+                podsDirectoryPath: pathsProvider.destinationPodsDirectory
+            )
+            externalProjects.merge(specProject, uniquingKeysWith: { $1 })
+            externalDependencies.merge(specDependencies, uniquingKeysWith: { $1 })
         }
         return .init(externalDependencies: externalDependencies, externalProjects: externalProjects)
     }
 
     public func clean(dependenciesDirectory: AbsolutePath) throws {
 
+    }
+
+    func convert(_ settingsDictionary: TuistGraph.SettingsDictionary) -> ProjectDescription.SettingsDictionary {
+        settingsDictionary.mapValues {
+            switch $0 {
+            case .array(let array): return .array(array)
+            case .string(let string): return .string(string)
+            }
+        }
+    }
+
+    func generateProjectDescription(
+        for spec: Podspec,
+        descriptionBaseSettings: ProjectDescription.SettingsDictionary,
+        descriptionConfigurations: [ProjectDescription.Configuration],
+        targetSettings: [String: TuistGraph.SettingsDictionary],
+        podsDirectoryPath: AbsolutePath
+    ) -> ([Path: ProjectDescription.Project], [String: [ProjectDescription.TargetDependency]]) {
+
+        var externalProjects: [Path: ProjectDescription.Project] = [:]
+        var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
+
+        if spec.isWrapperPod {
+            var result = [ProjectDescription.TargetDependency]()
+            result += spec.expandVendoredFramework(podsPath: podsDirectoryPath)
+            result += (spec.libraries ?? []) .map {
+                .sdk(name: $0, type: .library, status: .required, condition: nil)
+            }
+
+            result += (spec.frameworks ?? []).map {
+                .sdk(name: $0, type: .framework, status: .required, condition: nil)
+            }
+
+            result += (spec.weakFrameworks ?? []).map {
+                .sdk(name: $0, type: .framework, status: .optional, condition: nil)
+            }
+            externalDependencies[spec.name] = result
+        } else {
+            let path = Path(podsDirectoryPath.appending(component: spec.name).pathString)
+
+            var specSpecificConfigurations = descriptionConfigurations
+            for (index, _) in specSpecificConfigurations.enumerated() {
+
+                if let settings = targetSettings[spec.name] {
+                    let convertedSettings = convert(settings)
+                    for (key, value) in convertedSettings {
+                        specSpecificConfigurations[index].settings[key] = value
+                    }
+                }
+
+                if let moduleName = spec.moduleName {
+                    specSpecificConfigurations[index].settings["PRODUCT_MODULE_NAME"] = .string(moduleName)
+                }
+                if let moduleMap = spec.moduleMap {
+                    specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
+                } else {
+                    specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
+                }
+            }
+
+            let sourceGlobs: [String] = (spec.sourceFiles ?? []).flatMap { cocoaPodsGlob in
+                Podspec.convertToGlob(from: cocoaPodsGlob)
+            }
+
+            let publicHeaderGlobs: [String] = {
+                var result: [String] = []
+                if let headerFiles = spec.publicHeaderFiles {
+                    result += headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) }
+                } else {
+                    result += sourceGlobs
+                }
+                if let headerDir = spec.headerDir {
+                    result += Podspec.convertToGlob(from: headerDir)
+                }
+                result += ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                return result
+            }()
+
+            let depenencies: [ProjectDescription.TargetDependency] = {
+                var result: [ProjectDescription.TargetDependency] = []
+
+                result += spec.expandVendoredFramework(podsPath: podsDirectoryPath)
+
+                result += (spec.libraries ?? []).map {
+                    .sdk(name: $0, type: .library, status: .required, condition: nil)
+                }
+
+                result += (spec.frameworks ?? []).map {
+                    .sdk(name: $0, type: .framework, status: .required, condition: nil)
+                }
+
+                result += (spec.weakFrameworks ?? []).map {
+                    .sdk(name: $0, type: .framework, status: .optional, condition: nil)
+                }
+
+                result += (spec.dependencies ?? [:]).keys.map { dependencyName in
+                    if dependencyName.contains("/") {
+                        // Convert subspec dependencies like "GTM/zlib" to "GTM"
+                        return .external(name: String(dependencyName.split(separator: "/").first!))
+                    } else {
+                        return .external(name: dependencyName)
+                    }
+                }
+
+                return result
+            }()
+
+            // TODO: alway generate info plist for now
+            let shouldGenerateInfoPlist: Bool = true || spec.isAggregatePod
+
+            externalProjects[path] = ProjectDescription.Project(
+                name: spec.name,
+                settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
+                targets: [
+                    Target(
+                        name: spec.name,
+                        destinations: .iOS,
+                        product: .staticFramework,
+                        productName: spec.moduleName,
+                        bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
+                        infoPlist: shouldGenerateInfoPlist ? .default : .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
+                        sources: {
+                            if !sourceGlobs.isEmpty {
+                                return ProjectDescription.SourceFilesList(globs: sourceGlobs.map { ProjectDescription.SourceFileGlob.glob(Path($0)) })
+                            } else {
+                                return nil
+                            }
+                        }(),
+                        headers: {
+                            return ProjectDescription.Headers.headers(
+                                public: FileList.list(
+                                    publicHeaderGlobs.map { (glob: String) -> FileListGlob in
+                                        ProjectDescription.FileListGlob.glob(Path(glob))
+                                    }
+                                ),
+                                private: [],
+                                project: FileList.list(
+                                    sourceGlobs.map { (glob: String) -> FileListGlob in
+                                        ProjectDescription.FileListGlob.glob(
+                                            Path(glob),
+                                            excluding: publicHeaderGlobs.map { Path($0) }
+                                        )
+                                    }
+                                )
+                            )
+                        }(),
+                        dependencies: depenencies
+                    )
+                ],
+                resourceSynthesizers: shouldGenerateInfoPlist ? [.plists()] : []
+            )
+            externalDependencies[spec.name] = [
+                .project(target: spec.name, path: path, condition: nil)
+            ]
+        }
+
+        return (externalProjects, externalDependencies)
     }
 
     fileprivate func readSpecs(pathsProvider: CocoaPodsPathsProvider) throws -> [Podspec] {
@@ -386,6 +408,36 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
     }
 
     private func saveDependencies(pathsProvider: CocoaPodsPathsProvider) throws {
+    }
+}
+
+// MARK: - Podspec Extensions
+
+extension Podspec {
+    func expandVendoredFramework(podsPath: AbsolutePath) -> [ProjectDescription.TargetDependency] {
+        return (self.vendoredFrameworks ?? []).flatMap { glob -> [ProjectDescription.TargetDependency] in
+            let pathString = podsPath
+                .appending(component: self.name)
+                .appending(try! RelativePath(validating: glob))
+                .pathString
+
+            if pathString.contains("*") {
+                return Array(Glob(pattern: pathString))
+                    .map { path in
+                        if path.hasSuffix("xcframework") {
+                            return .xcframework(path: Path(path), status: .required, condition: nil)
+                        } else {
+                            return .framework(path: Path(path), status: .required, condition: nil)
+                        }
+                    }
+            } else {
+                if pathString.hasSuffix("xcframework") {
+                    return [.xcframework(path: Path(pathString), status: .required, condition: nil)]
+                } else {
+                    return [.framework(path: Path(pathString), status: .required, condition: nil)]
+                }
+            }
+        }
     }
 }
 

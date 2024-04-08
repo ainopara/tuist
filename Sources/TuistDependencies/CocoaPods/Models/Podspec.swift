@@ -20,7 +20,7 @@ public struct Podspec: Decodable {
     public let requiresAppHost: Bool?
     public let scheme: [String: Bool]?
 
-    public var name: String { rootspec.name }
+    public var name: String { rootspec.name! }
     public var platforms: PodspecPlatform? { rootspec.platforms }
     public var dependencies: [String: ImplicitStringList]? { rootspec.dependencies }
     public var frameworks: [String]? { rootspec.frameworks }
@@ -46,10 +46,34 @@ public struct Podspec: Decodable {
     public var requiresArc: BoolOrImplicitStringList? { rootspec.requiresArc }
     public var xcconfig: [String: ImplicitStringList]? { rootspec.xcconfig }
 
-    public var ios: PlatformConfig? { rootspec.ios }
-    public var osx: PlatformConfig? { rootspec.osx }
-    public var watchos: PlatformConfig? { rootspec.watchos }
-    public var tvos: PlatformConfig? { rootspec.tvos }
+    public var ios: Subspec? { rootspec.ios }
+    public var osx: Subspec? { rootspec.osx }
+    public var watchos: Subspec? { rootspec.watchos }
+    public var tvos: Subspec? { rootspec.tvos }
+
+    public init(
+        rootspec: Subspec,
+        version: String,
+        subspecs: [Subspec]?,
+        defaultSubspecs: [String]?,
+        swiftVersion: String?,
+        cocoapodsVersion: String?,
+        prepareCommand: String?,
+        staticFramework: Bool?,
+        requiresAppHost: Bool?,
+        scheme: [String: Bool]?
+    ) {
+        self.rootspec = rootspec
+        self.version = version
+        self.subspecs = subspecs
+        self.defaultSubspecs = defaultSubspecs
+        self.swiftVersion = swiftVersion
+        self.cocoapodsVersion = cocoapodsVersion
+        self.prepareCommand = prepareCommand
+        self.staticFramework = staticFramework
+        self.requiresAppHost = requiresAppHost
+        self.scheme = scheme
+    }
 
     public init(from decoder: any Decoder) throws {
         
@@ -135,6 +159,57 @@ public extension Podspec {
         return results
     }
 
+    func resolveSubspecNames(selectedSubspecs: [String]?) -> [String] {
+        let subspecs = subspecs ?? []
+        var inspectedSubspecs: Set<String> = []
+        var subspecsToInspect: [String] = selectedSubspecs ?? defaultSubspecs ?? subspecs.map { $0.name! }
+        while !subspecsToInspect.isEmpty {
+            let currentSubspecName = subspecsToInspect.popLast()!
+            inspectedSubspecs.insert(currentSubspecName)
+            if let currentSubspec = subspecs.first(where: { $0.name == currentSubspecName }) {
+                for dependencyName in (currentSubspec.dependencies ?? [:]).keys where dependencyName.hasPrefix(self.name) {
+                    let shortDependencyName = dependencyName.split(separator: "/")[1...].joined(separator: "/")
+                    if !inspectedSubspecs.contains(shortDependencyName) {
+                        subspecsToInspect.append(shortDependencyName)
+                    }
+                }
+            } else {
+                assertionFailure()
+            }
+        }
+        return Array(inspectedSubspecs).sorted()
+    }
+
+    func resolvePodspec(selectedSubspecs: [String]?) -> Podspec {
+        let subspecNames = self.resolveSubspecNames(selectedSubspecs: selectedSubspecs)
+        let finalValidSubspecs = (self.subspecs ?? []).filter { subspecNames.contains($0.name!) }
+        let mergedSpec = Subspec()
+        mergedSpec.name = rootspec.name
+
+        for subspec in ([self.rootspec] + finalValidSubspecs) {
+            mergedSpec.merge(subspec)
+        }
+
+        mergedSpec.extractPlatformConfigs()
+
+        mergedSpec.dependencies = mergedSpec.dependencies?.filter({ key, _ in
+            return !key.hasPrefix(mergedSpec.name!)
+        })
+
+        return Podspec(
+            rootspec: mergedSpec,
+            version: self.version,
+            subspecs: self.subspecs,
+            defaultSubspecs: self.defaultSubspecs,
+            swiftVersion: self.swiftVersion,
+            cocoapodsVersion: self.cocoapodsVersion,
+            prepareCommand: self.prepareCommand,
+            staticFramework: self.staticFramework,
+            requiresAppHost: self.requiresAppHost,
+            scheme: self.scheme
+        )
+    }
+
     var validSourceFiles: [String] {
         var result: [String] = []
         result += self.sourceFiles ?? []
@@ -184,7 +259,7 @@ public extension Podspec {
         }
         if let subspecs = subspecs {
             if let defaultSubspecs = defaultSubspecs {
-                for subspec in subspecs where defaultSubspecs.contains(subspec.name) {
+                for subspec in subspecs where defaultSubspecs.contains(subspec.name!) {
                     result.append(contentsOf: subspec.validDependenciesKeys)
                 }
             } else {
@@ -206,51 +281,41 @@ public extension Podspec {
     }
 
     var validFrameworks: [String] {
-        var result = [String]()
-        if let frameworks = frameworks {
-            result.append(contentsOf: frameworks)
-        }
-        if let ios = ios {
-            if let frameworks = ios.frameworks {
-                result.append(contentsOf: frameworks)
-            }
-        }
+        var result: Set<String> = []
+        result.formUnion(frameworks ?? [])
+        result.formUnion(ios?.frameworks ?? [])
         if let subspecs = subspecs {
-            if let defaultSubspecs = defaultSubspecs {
-                for subspec in subspecs where defaultSubspecs.contains(subspec.name) {
-                    result.append(contentsOf: subspec.validFrameworks)
-                }
-            } else {
-                for subspec in subspecs {
-                    result.append(contentsOf: subspec.validFrameworks)
-                }
+            let integratedSubspecs = defaultSubspecs ?? subspecs.map(\.name)
+            for subspec in subspecs where integratedSubspecs.contains(subspec.name) {
+                result.formUnion(subspec.frameworks ?? [])
             }
         }
-        return Array(Set(result))
+        return Array(result).sorted()
+    }
+
+    var validWeakFrameworks: [String] {
+        var result: Set<String> = []
+        result.formUnion(weakFrameworks ?? [])
+        if let subspecs = subspecs {
+            let integratedSubspecs = defaultSubspecs ?? subspecs.map(\.name)
+            for subspec in subspecs where integratedSubspecs.contains(subspec.name) {
+                result.formUnion(subspec.weakFrameworks ?? [])
+            }
+        }
+        return Array(result).sorted()
     }
 
     var validLibraries: [String] {
-        var result = [String]()
-        if let libraries = libraries {
-            result.append(contentsOf: libraries)
-        }
-        if let ios = ios {
-            if let libraries = ios.libraries {
-                result.append(contentsOf: libraries)
-            }
-        }
+        var result: Set<String> = []
+        result.formUnion(libraries ?? [])
+        result.formUnion(ios?.libraries ?? [])
         if let subspecs = subspecs {
-            if let defaultSubspecs = defaultSubspecs {
-                for subspec in subspecs where defaultSubspecs.contains(subspec.name) {
-                    result.append(contentsOf: subspec.validLibraries)
-                }
-            } else {
-                for subspec in subspecs {
-                    result.append(contentsOf: subspec.validLibraries)
-                }
+            let integratedSubspecs = defaultSubspecs ?? subspecs.map(\.name)
+            for subspec in subspecs where integratedSubspecs.contains(subspec.name) {
+                result.formUnion(subspec.libraries ?? [])
             }
         }
-        return Array(Set(result))
+        return Array(result).sorted()
     }
 
     var validVendoredFrameworks: [String] {
@@ -294,7 +359,7 @@ public extension Podspec {
         }
         if let subspecs = subspecs {
             if let defaultSubspecs = defaultSubspecs {
-                for subspec in subspecs where defaultSubspecs.contains(subspec.name) {
+                for subspec in subspecs where defaultSubspecs.contains(subspec.name!) {
                     result = result.merging(subspec.validPodTargetXcconfig, uniquingKeysWith: { $1 })
                 }
             } else {
@@ -304,14 +369,6 @@ public extension Podspec {
             }
         }
         return result
-    }
-
-    var isArcheryTarget: Bool {
-        return (vendoredLibraries != nil || ((vendoredFrameworks != nil || ios?.vendoredFrameworks != nil) && sourceFiles == nil))
-    }
-    
-    var targetName: String {
-        moduleName ?? name.replacingOccurrences(of: "-", with: "_")
     }
 
     var isWrapperPod: Bool {
@@ -433,10 +490,10 @@ public extension Podspec {
 }
 
 public struct PodspecPlatform: Decodable {
-    public let ios: String?
-    public let osx: String?
-    public let watchos: String?
-    public let tvos: String?
+    public var ios: String?
+    public var osx: String?
+    public var watchos: String?
+    public var tvos: String?
 }
 
 

@@ -209,12 +209,14 @@ var targets: [Target] = [
             "TuistSupport",
             "TuistPlugin",
             swiftToolsSupportDependency,
+            .product(name: "CustomDump", package: "swift-custom-dump")
         ]
     ),
     .testTarget(
         name: "TuistDependenciesCocoapodsTests",
         dependencies: [
-            "TuistDependencies"
+            "TuistDependencies",
+
         ]
     ),
     .target(
@@ -390,6 +392,7 @@ let package = Package(
         .package(url: "https://github.com/SwiftGen/StencilSwiftKit", exact: "2.10.1"),
         .package(url: "https://github.com/SwiftGen/SwiftGen", exact: "6.6.2"),
         .package(url: "https://github.com/tuist/XcodeProj", exact: "8.15.0"),
+        .package(url: "https://github.com/pointfreeco/swift-custom-dump", exact: "1.3.0"),
         .package(url: "https://github.com/cpisciotta/xcbeautify", from: "1.4.0"),
     ],
     targets: targets

@@ -9,7 +9,7 @@ import Foundation
 
 @propertyWrapper
 public struct ImplicitStringList {
-    public let wrappedValue: [String]?
+    public var wrappedValue: [String]?
 
     public init(wrappedValue: [String]?) {
         self.wrappedValue = wrappedValue
