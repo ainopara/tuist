@@ -108,10 +108,9 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         var subspecDictionarry: [String: [String]] = [:]
-        for case .remote(let name, let source, let subpsecs) in dependencies.pods {
+        for case .remote(let name, _, let subpsecs) in dependencies.pods {
             subspecDictionarry[name] = subpsecs
         }
-
 
         for spec in specs {
             let resolvedSpec = spec.resolvePodspec(selectedSubspecs: subspecDictionarry[spec.name])
@@ -186,7 +185,13 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 if let moduleMap = spec.moduleMap {
                     specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
                 } else {
-                    specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
+                    let generatedModuleMapPath = try! AbsolutePath(
+                        podsDirectoryPath,
+                        RelativePath(validating: "Target Support Files/\(spec.name)/\(spec.name).modulemap")
+                    )
+                    if localFileSystem.exists(generatedModuleMapPath) {
+                        specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
+                    }
                 }
             }
 
@@ -253,7 +258,14 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         infoPlist: shouldGenerateInfoPlist ? .default : .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
                         sources: {
                             if !sourceGlobs.isEmpty {
-                                return ProjectDescription.SourceFilesList(globs: sourceGlobs.map { ProjectDescription.SourceFileGlob.glob(Path($0)) })
+                                return ProjectDescription.SourceFilesList(
+                                    globs: sourceGlobs.map {
+                                        ProjectDescription.SourceFileGlob.glob(
+                                            Path($0),
+                                            compilerFlags: spec.compilerFlags?.joined(separator: "")
+                                        )
+                                    }
+                                )
                             } else {
                                 return nil
                             }
@@ -333,7 +345,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             path: pathsProvider.destinationCocoaPodsDirectory.appending(component: "Project.swift"),
             atomically: true
         )
-        
+        try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory.appending(component: "Tuist"))
+
         var env = System.shared.env
         env["PATH"] = "/usr/local/bin:" + (env["PATH"] ?? "/usr/local/bin:/usr/bin:/bin")
         try System.shared.runAndPrint(

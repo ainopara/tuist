@@ -47,7 +47,6 @@ public class Subspec: Decodable {
 
     public var dependencies: [String: ImplicitStringList]?
 
-    public var xcconfig: [String: ImplicitStringList]?
     public var podTargetXcconfig: [String: ImplicitStringList]?
     public var userTargetXcconfig: [String: ImplicitStringList]?
     @ImplicitStringList
@@ -70,7 +69,6 @@ public class Subspec: Decodable {
         case libraries
         case privateHeaderFiles = "private_header_files"
         case excludeFiles = "exclude_files"
-        case xcconfig
         case publicHeaderFiles = "public_header_files"
         case ios
         case osx
@@ -98,21 +96,21 @@ public class Subspec: Decodable {
 public extension Subspec {
 
     func merge(_ other: Subspec) {
-        if other.platforms != nil {
+        if let otherPlatforms = other.platforms {
             if self.platforms == nil {
                 self.platforms = other.platforms
             } else {
-                self.platforms?.ios = other.platforms?.ios
-                self.platforms?.osx = other.platforms?.osx
-                self.platforms?.watchos = other.platforms?.watchos
-                self.platforms?.tvos = other.platforms?.tvos
+                self.platforms?.ios = otherPlatforms.ios
+                self.platforms?.osx = otherPlatforms.osx
+                self.platforms?.watchos = otherPlatforms.watchos
+                self.platforms?.tvos = otherPlatforms.tvos
             }
         }
-        if other.moduleName != nil {
-            self.moduleName = other.moduleName
+        if let otherModuleName = other.moduleName {
+            self.moduleName = otherModuleName
         }
-        if other.moduleMap != nil {
-            self.moduleMap = other.moduleMap
+        if let otherModuleMap = other.moduleMap {
+            self.moduleMap = otherModuleMap
         }
         if other.prefixHeaderFile != nil {
             self.prefixHeaderFile = other.prefixHeaderFile
@@ -162,27 +160,22 @@ public extension Subspec {
         if other.dependencies != nil {
             self.dependencies = (self.dependencies ?? [:]).merging(other.dependencies ?? [:], uniquingKeysWith: { $1 })
         }
-        if other.xcconfig != nil {
-            self.xcconfig = (self.xcconfig ?? [:]).merging(other.xcconfig ?? [:], uniquingKeysWith: {
-                ImplicitStringList(wrappedValue: ($0.wrappedValue ?? []) + ($1.wrappedValue ?? []))
-            })
-        }
         if other.podTargetXcconfig != nil {
             self.podTargetXcconfig = (self.podTargetXcconfig ?? [:]).merging(other.podTargetXcconfig ?? [:], uniquingKeysWith: {
                 ImplicitStringList(wrappedValue: ($0.wrappedValue ?? []) + ($1.wrappedValue ?? []))
             })
         }
-        if other.userTargetXcconfig != nil {
-            self.userTargetXcconfig = (self.userTargetXcconfig ?? [:]).merging(other.userTargetXcconfig ?? [:], uniquingKeysWith: {
+        if let otherUserTargetXcconfig = other.userTargetXcconfig {
+            self.userTargetXcconfig = (self.userTargetXcconfig ?? [:]).merging(otherUserTargetXcconfig, uniquingKeysWith: {
                 ImplicitStringList(wrappedValue: ($0.wrappedValue ?? []) + ($1.wrappedValue ?? []))
             })
         }
-        if other.compilerFlags != nil {
-            self.compilerFlags = (self.compilerFlags ?? []) + (other.compilerFlags ?? [])
+        if let otherCompilerFlags = other.compilerFlags {
+            self.compilerFlags = (self.compilerFlags ?? []) + otherCompilerFlags
         }
 
-        if other.ios != nil {
-            self.ios?.merge(other.ios!)
+        if let otherIOS = other.ios {
+            self.ios?.merge(otherIOS)
         }
     }
 
@@ -191,126 +184,5 @@ public extension Subspec {
             merge(ios)
             self.ios = nil
         }
-    }
-
-    var validSourceFiles: [String]? {
-        var result: [String] = []
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                if let subspecValidSourceFiles = subspec.validSourceFiles {
-                    result.append(contentsOf: subspecValidSourceFiles)
-                }
-            }
-        }
-        if let sourceFiles = sourceFiles {
-            result.append(contentsOf: sourceFiles)
-        }
-        if
-            let ios = ios,
-            let files = ios.sourceFiles
-        {
-            result.append(contentsOf: files)
-        }
-        return result
-    }
-
-    var validRequiresArc: [String] {
-        var result = [String]()
-        if let requiresArc = requiresArc {
-            switch requiresArc {
-            case .bool(let isRequire) where isRequire :
-                result.append(contentsOf: sourceFiles ?? [])
-            case .implicitStringList(let list):
-                result.append(contentsOf: list.wrappedValue ?? [])
-            default:
-                break
-            }
-        } else {
-            result.append(contentsOf: sourceFiles ?? [])
-        }
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                result.append(contentsOf: subspec.validRequiresArc)
-            }
-        }
-        return result
-    }
-
-    var validDependenciesKeys: [String] {
-        var result = [String]()
-        if let dependencies = dependencies {
-            let keys = dependencies.keys
-            result.append(contentsOf: Array(keys))
-        }
-        if let ios = ios {
-            if let dependencies = ios.dependencies {
-                let keys = dependencies.keys
-                result.append(contentsOf: Array(keys))
-            }
-        }
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                result.append(contentsOf: subspec.validDependenciesKeys)
-            }
-        }
-        return Array(Set(result))
-    }
-
-    var validFrameworks: [String] {
-        var result = [String]()
-        if let frameworks = frameworks {
-            result.append(contentsOf: frameworks)
-        }
-        if let ios = ios {
-            if let frameworks = ios.frameworks {
-                result.append(contentsOf: frameworks)
-            }
-        }
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                result.append(contentsOf: subspec.validFrameworks)
-            }
-        }
-        return Array(Set(result))
-    }
-
-    var validLibraries: [String] {
-        var result = [String]()
-        if let libraries = libraries {
-            result.append(contentsOf: libraries)
-        }
-        if let ios = ios {
-            if let libraries = ios.libraries {
-                result.append(contentsOf: libraries)
-            }
-        }
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                result.append(contentsOf: subspec.validLibraries)
-            }
-        }
-        return Array(Set(result))
-    }
-
-    var validPodTargetXcconfig: [String: ImplicitStringList] {
-        var result: [String: ImplicitStringList] = [:]
-        if let podTargetXcconfig = podTargetXcconfig {
-            result = result.merging(podTargetXcconfig, uniquingKeysWith: { $1 })
-        }
-        if let xcconfig = xcconfig {
-            result = result.merging(xcconfig, uniquingKeysWith: { $1 })
-        }
-        if let ios = ios {
-            if let podTargetXcconfig = ios.podTargetXcconfig {
-                result = result.merging(podTargetXcconfig, uniquingKeysWith: { $1 })
-            }
-        }
-        if let subspecs = subspecs {
-            for subspec in subspecs {
-                result = result.merging(subspec.validPodTargetXcconfig, uniquingKeysWith: { $1 })
-            }
-        }
-
-        return result
     }
 }
