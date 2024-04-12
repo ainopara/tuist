@@ -295,4 +295,178 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "Frameworks/TensorFlowLiteCMetal.framework"
         ])
     }
+
+    func testPodspecMergeDeduplication() throws {
+        let specJSON = """
+        {
+          "name": "Sentry",
+          "version": "8.9.0-beta.1",
+          "summary": "Sentry client for cocoa",
+          "homepage": "https://github.com/getsentry/sentry-cocoa",
+          "license": "mit",
+          "authors": "Sentry",
+          "source": {
+            "git": "https://github.com/getsentry/sentry-cocoa.git",
+            "tag": "8.9.0-beta.1"
+          },
+          "platforms": {
+            "ios": "11.0",
+            "osx": "10.13",
+            "tvos": "11.0",
+            "watchos": "4.0"
+          },
+          "module_name": "Sentry",
+          "requires_arc": true,
+          "frameworks": "Foundation",
+          "libraries": [
+            "z",
+            "c++"
+          ],
+          "swift_versions": "5.5",
+          "pod_target_xcconfig": {
+            "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+            "CLANG_CXX_LANGUAGE_STANDARD": "c++14",
+            "CLANG_CXX_LIBRARY": "libc++"
+          },
+          "watchos": {
+            "pod_target_xcconfig": {
+              "OTHER_LDFLAGS": "$(inherited) -framework WatchKit"
+            }
+          },
+          "default_subspecs": [
+            "Core"
+          ],
+          "dependencies": {
+            "SentryPrivate": [
+              "8.9.0-beta.1"
+            ]
+          },
+          "subspecs": [
+            {
+              "name": "Core",
+              "source_files": [
+                "Sources/Sentry/**/*.{h,hpp,m,mm,c,cpp}",
+                "Sources/SentryCrash/**/*.{h,hpp,m,mm,c,cpp}",
+                "Sources/Swift/Sentry.swift"
+              ],
+              "public_header_files": "Sources/Sentry/Public/*.h"
+            },
+            {
+              "name": "HybridSDK",
+              "source_files": [
+                "Sources/Sentry/**/*.{h,hpp,m,mm,c,cpp}",
+                "Sources/SentryCrash/**/*.{h,hpp,m,mm,c,cpp}",
+                "Sources/Swift/Sentry.swift"
+              ],
+              "public_header_files": [
+                "Sources/Sentry/Public/*.h",
+                "Sources/Sentry/include/HybridPublic/*.h"
+              ]
+            }
+          ],
+          "swift_version": "5.5"
+        }
+        """
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: ["Core", "HybridSDK"])
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(spec.name, "Sentry")
+        XCTAssertNoDifference(spec.version, "8.9.0-beta.1")
+        XCTAssertNoDifference(spec.platforms?.ios, "11.0")
+        XCTAssertNoDifference(spec.publicHeaderFiles, [
+            "Sources/Sentry/Public/*.h",
+            "Sources/Sentry/include/HybridPublic/*.h"
+        ])
+        XCTAssertNoDifference(spec.sourceFiles, [
+            "Sources/Sentry/**/*.{h,hpp,m,mm,c,cpp}",
+            "Sources/SentryCrash/**/*.{h,hpp,m,mm,c,cpp}",
+            "Sources/Swift/Sentry.swift"
+        ])
+        XCTAssertNoDifference(Array((spec.dependencies ?? [:]).keys).sorted() , [
+            "SentryPrivate"
+        ])
+    }
+
+    func testPodspecObjcHeaderSearch() throws {
+        let specJSON = """
+        {
+          "name": "CocoaLumberjack",
+          "version": "3.7.4",
+          "license": "BSD",
+          "summary": "A fast & simple, yet powerful & flexible logging framework for macOS, iOS, tvOS and watchOS.",
+          "homepage": "https://github.com/CocoaLumberjack/CocoaLumberjack",
+          "authors": {
+            "Robbie Hanson": "robbiehanson@deusty.com"
+          },
+          "source": {
+            "git": "https://github.com/CocoaLumberjack/CocoaLumberjack.git",
+            "tag": "3.7.4"
+          },
+          "description": "It is similar in concept to other popular logging frameworks such as log4j, yet is designed specifically for objective-c, and takes advantage of features such as multi-threading, grand central dispatch (if available), lockless atomic operations, and the dynamic nature of the objective-c runtime.",
+          "preserve_paths": "README.md",
+          "platforms": {
+            "ios": "9.0",
+            "osx": "10.10",
+            "watchos": "3.0",
+            "tvos": "9.0"
+          },
+          "cocoapods_version": ">= 1.4.0",
+          "requires_arc": true,
+          "swift_versions": "5.0",
+          "default_subspecs": "Core",
+          "subspecs": [
+            {
+              "name": "Core",
+              "source_files": "Sources/CocoaLumberjack/**/*.{h,m}",
+              "private_header_files": "Sources/CocoaLumberjack/DD*Internal.{h}"
+            },
+            {
+              "name": "Swift",
+              "dependencies": {
+                "CocoaLumberjack/Core": [
+
+                ]
+              },
+              "source_files": [
+                "Sources/CocoaLumberjackSwift/**/*.swift",
+                "Sources/CocoaLumberjackSwiftSupport/include/**/*.{h}"
+              ]
+            }
+          ],
+          "swift_version": "5.0"
+        }
+
+        """
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: ["Core", "Swift"])
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(spec.name, "CocoaLumberjack")
+        XCTAssertNoDifference(spec.privateHeaderFiles, [
+            "Sources/CocoaLumberjack/DD*Internal.{h}"
+        ])
+        XCTAssertNoDifference(spec.sourceFiles, [
+            "Sources/CocoaLumberjack/**/*.{h,m}",
+            "Sources/CocoaLumberjackSwift/**/*.swift",
+            "Sources/CocoaLumberjackSwiftSupport/include/**/*.{h}"
+        ])
+        XCTAssertNoDifference(Array((spec.dependencies ?? [:]).keys).sorted() , [])
+    }
 }

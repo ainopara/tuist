@@ -192,7 +192,7 @@ public extension Podspec {
         mergedSpec.extractPlatformConfigs()
 
         mergedSpec.dependencies = mergedSpec.dependencies?.filter({ key, _ in
-            return !key.hasPrefix(mergedSpec.name!)
+            return !key.hasPrefix(mergedSpec.name! + "/")
         })
 
         return Podspec(

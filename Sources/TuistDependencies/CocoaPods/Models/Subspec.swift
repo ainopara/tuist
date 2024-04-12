@@ -121,15 +121,19 @@ public extension Subspec {
         if other.headerMappingsDir != nil {
             self.headerMappingsDir = other.headerMappingsDir
         }
-        if other.publicHeaderFiles != nil {
-            self.publicHeaderFiles = (self.publicHeaderFiles ?? []) + (other.publicHeaderFiles ?? [])
+        if let otherPublicHeaderFiles = other.publicHeaderFiles {
+            let publicHeaderFiles = self.publicHeaderFiles ?? []
+            self.publicHeaderFiles = publicHeaderFiles + otherPublicHeaderFiles.filter { !publicHeaderFiles.contains($0) }
         }
-        if other.privateHeaderFiles != nil {
-            self.privateHeaderFiles = (self.privateHeaderFiles ?? []) + (other.privateHeaderFiles ?? [])
+        if let otherPrivateHeaderFiles = other.privateHeaderFiles {
+            let privateHeaderFiles = self.privateHeaderFiles ?? []
+            self.privateHeaderFiles = privateHeaderFiles + otherPrivateHeaderFiles.filter { !privateHeaderFiles.contains($0) }
         }
-        if other.sourceFiles != nil {
-            self.sourceFiles = (self.sourceFiles ?? []) + (other.sourceFiles ?? [])
+        if let otherSourceFiles = other.sourceFiles {
+            let sourceFiles = self.sourceFiles ?? []
+            self.sourceFiles = sourceFiles + otherSourceFiles.filter { !sourceFiles.contains($0) }
         }
+
         if other.excludeFiles != nil {
             self.excludeFiles = (self.excludeFiles ?? []) + (other.excludeFiles ?? [])
         }

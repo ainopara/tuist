@@ -76,7 +76,19 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
 
-        let descriptionBaseSettings: ProjectDescription.SettingsDictionary = convert(dependencies.baseSettings.base)
+        var descriptionBaseSettings: ProjectDescription.SettingsDictionary = convert(dependencies.baseSettings.base)
+
+        descriptionBaseSettings = descriptionBaseSettings
+            .applying(operation: .add(policy: .merge, settings: [
+                "GCC_PREPROCESSOR_DEFINITIONS": ["$(inherited)", "COCOAPODS=1"],
+                "OTHER_SWIFT_FLAGS": ["$(inherited)", "-D", "COCOAPODS"]
+            ]))
+            .applying(operation: .add(policy: .replace, settings: [
+                "CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER": "NO",
+                "PODS_BUILD_DIR": "${BUILD_DIR}",
+                "PODS_CONFIGURATION_BUILD_DIR": "${PODS_BUILD_DIR}/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)",
+                "PODS_ROOT": "${SRCROOT}/.."
+            ]))
 
         var descriptionConfigurations: [ProjectDescription.Configuration] = []
         
@@ -170,7 +182,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             let path = Path(podsDirectoryPath.appending(component: spec.name).pathString)
 
             var specSpecificConfigurations = descriptionConfigurations
-            for (index, _) in specSpecificConfigurations.enumerated() {
+            for (index, configuration) in specSpecificConfigurations.enumerated() {
 
                 if let settings = targetSettings[spec.name] {
                     let convertedSettings = convert(settings)
@@ -182,6 +194,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 if let moduleName = spec.moduleName {
                     specSpecificConfigurations[index].settings["PRODUCT_MODULE_NAME"] = .string(moduleName)
                 }
+
                 if let moduleMap = spec.moduleMap {
                     specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
                 } else {
@@ -193,11 +206,43 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string("../Target Support Files/\(spec.name)/\(spec.name).modulemap")
                     }
                 }
+
+                if ["YTKRouterManager", "VGOWeb"].contains(spec.name) {
+                    specSpecificConfigurations[index].settings["GCC_PREFIX_HEADER"] = .string("../Target Support Files/\(spec.name)/\(spec.name)-prefix.pch")
+                }
+
+                specSpecificConfigurations[index].settings["PODS_TARGET_SRCROOT"] = .string("${PODS_ROOT}/\(spec.name)")
+
+                if let podTargetXcconfig = spec.podTargetXcconfig {
+                    for (key, value) in podTargetXcconfig {
+                        specSpecificConfigurations[index].settings = specSpecificConfigurations[index].settings
+                            .applying(operation: .add(policy: .merge, settings: [key: .array(value.wrappedValue ?? [])]))
+                    }
+                }
             }
 
             let sourceGlobs: [String] = (spec.sourceFiles ?? []).flatMap { cocoaPodsGlob in
                 Podspec.convertToGlob(from: cocoaPodsGlob)
             }
+
+            let sources = sourceGlobs
+                .map { Glob(pattern: $0) }
+                .reduce([String]()) { partialResult, next in return partialResult + next }
+
+            var compilerFlags = spec.compilerFlags ?? []
+            
+            switch spec.requiresArc {
+            case .bool(let boolValue):
+                if boolValue == false {
+                    compilerFlags.append("-fno-objc-arc")
+                }
+            case .implicitStringList(let implicitStringList):
+                break
+            case .error, .none:
+                break
+            }
+
+            let privateHeaderGlobs: [String] = spec.privateHeaderFiles ?? []
 
             let publicHeaderGlobs: [String] = {
                 var result: [String] = []
@@ -242,9 +287,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 return result
             }()
 
-            // TODO: alway generate info plist for now
-            let shouldGenerateInfoPlist: Bool = true || spec.isAggregatePod
-
             externalProjects[path] = ProjectDescription.Project(
                 name: spec.name,
                 settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
@@ -255,14 +297,15 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         product: .staticFramework,
                         productName: spec.moduleName,
                         bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
-                        infoPlist: shouldGenerateInfoPlist ? .default : .file(path: Path("../Target Support Files/\(spec.name)/\(spec.name)-Info.plist")),
+                        deploymentTargets: .iOS("12.0"),
+                        infoPlist: .default,
                         sources: {
-                            if !sourceGlobs.isEmpty {
+                            if !sources.isEmpty {
                                 return ProjectDescription.SourceFilesList(
-                                    globs: sourceGlobs.map {
+                                    globs: sources.map {
                                         ProjectDescription.SourceFileGlob.glob(
                                             Path($0),
-                                            compilerFlags: spec.compilerFlags?.joined(separator: "")
+                                            compilerFlags: compilerFlags.joined(separator: "")
                                         )
                                     }
                                 )
@@ -277,12 +320,16 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                                         ProjectDescription.FileListGlob.glob(Path(glob))
                                     }
                                 ),
-                                private: [],
+                                private: FileList.list(
+                                    privateHeaderGlobs.map { (glob: String) -> FileListGlob in
+                                        ProjectDescription.FileListGlob.glob(Path(glob))
+                                    }
+                                ),
                                 project: FileList.list(
                                     sourceGlobs.map { (glob: String) -> FileListGlob in
                                         ProjectDescription.FileListGlob.glob(
                                             Path(glob),
-                                            excluding: publicHeaderGlobs.map { Path($0) }
+                                            excluding: (publicHeaderGlobs + privateHeaderGlobs).map { Path($0) }
                                         )
                                     }
                                 )
@@ -291,7 +338,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         dependencies: depenencies
                     )
                 ],
-                resourceSynthesizers: shouldGenerateInfoPlist ? [.plists()] : []
+                resourceSynthesizers: [.plists()]
             )
             externalDependencies[spec.name] = [
                 .project(target: spec.name, path: path, condition: nil)
