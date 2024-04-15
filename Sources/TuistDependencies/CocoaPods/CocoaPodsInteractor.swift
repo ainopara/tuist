@@ -208,7 +208,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit"].contains(spec.name) {
+                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit", "YTKCoreText", "ProtocolBuffers"].contains(spec.name) {
                     specSpecificConfigurations[index].settings["GCC_PREFIX_HEADER"] = .string("../Target Support Files/\(spec.name)/\(spec.name)-prefix.pch")
                 }
 
@@ -351,7 +351,10 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                             return ProjectDescription.Headers.headers(
                                 public: FileList.list(
                                     publicHeaderGlobs.map { (glob: String) -> FileListGlob in
-                                        ProjectDescription.FileListGlob.glob(Path(glob))
+                                        ProjectDescription.FileListGlob.glob(
+                                            Path(glob),
+                                            excluding: privateHeaderGlobs.map { Path($0) }
+                                        )
                                     }
                                 ),
                                 private: FileList.list(
