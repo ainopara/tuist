@@ -82,6 +82,70 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         )
     }
 
+    func testPodspecParsingVGODataEncryptor() throws {
+        let specJSON = """
+        {
+          "name": "VGODataEncryptor",
+          "version": "1.2.2",
+          "summary": "A data encryptor wrapper for Solar.",
+          "homepage": "https://gerrit.zhenguanyu.com/admin/repos/ios-module-VGODataEncryptor",
+          "license": {
+            "type": "MIT",
+            "file": "LICENSE"
+          },
+          "authors": {
+            "J.Zhou": "zhoujian@fenbi.com"
+          },
+          "source": {
+            "git": "ssh://gerrit.zhenguanyu.com:29418/ios-module-VGODataEncryptor",
+            "tag": "1.2.2"
+          },
+          "platforms": {
+            "ios": "9.0"
+          },
+          "ios": {
+            "vendored_frameworks": "VGODataEncryptor/VGODataEncryptor.xcframework"
+          },
+          "libraries": "c++"
+        }
+        """
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+        
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(spec.name, "VGODataEncryptor")
+        XCTAssertNoDifference(spec.version, "1.2.2")
+        XCTAssertNoDifference(spec.platforms?.ios, "9.0")
+        XCTAssertNoDifference(spec.vendoredFrameworks, ["VGODataEncryptor/VGODataEncryptor.xcframework"])
+        XCTAssertNoDifference(spec.libraries, ["c++"])
+        XCTAssertNoDifference(project, [:])
+        XCTAssertNoDifference(
+            dependencies,
+            [
+                "VGODataEncryptor": [
+                    ProjectDescription.TargetDependency.xcframework(
+                        path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/VGODataEncryptor/VGODataEncryptor/VGODataEncryptor.xcframework"),
+                        status: .required,
+                        condition: nil
+                    ),
+                    ProjectDescription.TargetDependency.sdk(
+                        name: "c++",
+                        type: .library,
+                        status: .required,
+                        condition: nil
+                    )
+                ]
+            ]
+        )
+    }
+
     func testPodspecParsingTensorFlowLiteC() throws {
         let specJSON = """
         {
@@ -468,5 +532,96 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "Sources/CocoaLumberjackSwiftSupport/include/**/*.{h}"
         ])
         XCTAssertNoDifference(Array((spec.dependencies ?? [:]).keys).sorted() , [])
+    }
+
+    func testPodspecRequireArcList() throws {
+        let specJSON = """
+        {
+          "name": "MMKVCore",
+          "version": "1.3.1",
+          "summary": "MMKVCore for MMKV. MMKV is a cross-platform key-value storage framework developed by WeChat.",
+          "description": "Don't use this library directly. Use MMKV instead.\nMMKV is an efficient, complete, easy-to-use mobile key-value storage framework used in the WeChat application.\nIt can be a replacement for NSUserDefaults & SQLite.",
+          "homepage": "https://github.com/Tencent/MMKV",
+          "license": {
+            "type": "BSD 3-Clause",
+            "file": "LICENSE.TXT"
+          },
+          "authors": {
+            "guoling": "guoling@tencent.com"
+          },
+          "platforms": {
+            "ios": "11.0",
+            "osx": "10.13",
+            "tvos": "13.0",
+            "watchos": "4.0"
+          },
+          "source": {
+            "git": "https://github.com/Tencent/MMKV.git",
+            "tag": "v1.3.1"
+          },
+          "source_files": [
+            "Core",
+            "Core/*.{h,cpp,hpp}",
+            "Core/aes/*",
+            "Core/aes/openssl/*",
+            "Core/crc32/*.h"
+          ],
+          "public_header_files": [
+            "Core/MMBuffer.h",
+            "Core/MMKV.h",
+            "Core/MMKVLog.h",
+            "Core/MMKVPredef.h",
+            "Core/PBUtility.h",
+            "Core/ScopedLock.hpp",
+            "Core/ThreadLock.h",
+            "Core/aes/openssl/openssl_md5.h",
+            "Core/aes/openssl/openssl_opensslconf.h"
+          ],
+          "compiler_flags": "-x objective-c++",
+          "requires_arc": [
+            "Core/MemoryFile.cpp",
+            "Core/ThreadLock.cpp",
+            "Core/InterProcessLock.cpp",
+            "Core/MMKVLog.cpp",
+            "Core/PBUtility.cpp",
+            "Core/MemoryFile_OSX.cpp",
+            "aes/openssl/openssl_cfb128.cpp",
+            "aes/openssl/openssl_aes_core.cpp",
+            "aes/openssl/openssl_md5_one.cpp",
+            "aes/openssl/openssl_md5_dgst.cpp",
+            "aes/AESCrypt.cpp"
+          ],
+          "frameworks": "CoreFoundation",
+          "ios": {
+            "frameworks": "UIKit"
+          },
+          "libraries": [
+            "z",
+            "c++"
+          ],
+          "pod_target_xcconfig": {
+            "CLANG_CXX_LANGUAGE_STANDARD": "gnu++17",
+            "CLANG_CXX_LIBRARY": "libc++",
+            "CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF": "NO"
+          }
+        }
+        """
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+
+        XCTAssertNoDifference(spec.requiresArc, .array([
+            "Core/MemoryFile.cpp",
+            "Core/ThreadLock.cpp",
+            "Core/InterProcessLock.cpp",
+            "Core/MMKVLog.cpp",
+            "Core/PBUtility.cpp",
+            "Core/MemoryFile_OSX.cpp",
+            "aes/openssl/openssl_cfb128.cpp",
+            "aes/openssl/openssl_aes_core.cpp",
+            "aes/openssl/openssl_md5_one.cpp",
+            "aes/openssl/openssl_md5_dgst.cpp",
+            "aes/AESCrypt.cpp"
+        ]))
     }
 }

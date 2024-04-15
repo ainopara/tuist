@@ -17,6 +17,8 @@ public struct SourceFileGlob: Codable, Equatable {
     /// Source file condition for compilation
     public var compilationCondition: PlatformCondition?
 
+    public let isSingleFile: Bool
+
     /// Returns a source glob pattern configuration.
     ///
     /// - Parameters:
@@ -37,7 +39,8 @@ public struct SourceFileGlob: Codable, Equatable {
             excluding: excluding,
             compilerFlags: compilerFlags,
             codeGen: codeGen,
-            compilationCondition: compilationCondition
+            compilationCondition: compilationCondition,
+            isSingleFile: false
         )
     }
 
@@ -54,14 +57,31 @@ public struct SourceFileGlob: Codable, Equatable {
             excluding: paths,
             compilerFlags: compilerFlags,
             codeGen: codeGen,
-            compilationCondition: compilationCondition
+            compilationCondition: compilationCondition,
+            isSingleFile: false
+        )
+    }
+
+    public static func file(
+        _ file: Path,
+        compilerFlags: String? = nil,
+        codeGen: FileCodeGen? = nil,
+        compilationCondition: PlatformCondition? = nil
+    ) -> Self {
+        return .init(
+            glob: file,
+            excluding: [],
+            compilerFlags: compilerFlags,
+            codeGen: codeGen,
+            compilationCondition: compilationCondition,
+            isSingleFile: false
         )
     }
 }
 
 extension SourceFileGlob: ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
-        self.init(glob: Path(value), excluding: [], compilerFlags: nil, codeGen: nil, compilationCondition: nil)
+        self.init(glob: Path(value), excluding: [], compilerFlags: nil, codeGen: nil, compilationCondition: nil, isSingleFile: false)
     }
 }
 

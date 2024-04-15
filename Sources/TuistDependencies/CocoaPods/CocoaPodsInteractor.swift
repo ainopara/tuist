@@ -5,6 +5,7 @@ import TuistCore
 import TuistGraph
 import TuistSupport
 import Foundation
+import TuistLoader
 
 public protocol CocoaPodsInteracting {
     /// Installs `Cocoapod` dependencies.
@@ -179,7 +180,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
             externalDependencies[spec.name] = result
         } else {
-            let path = Path(podsDirectoryPath.appending(component: spec.name).pathString)
+            let manifestPath = Path(podsDirectoryPath.appending(component: spec.name).pathString)
 
             var specSpecificConfigurations = descriptionConfigurations
             for (index, configuration) in specSpecificConfigurations.enumerated() {
@@ -207,7 +208,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                if ["YTKRouterManager", "VGOWeb"].contains(spec.name) {
+                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit"].contains(spec.name) {
                     specSpecificConfigurations[index].settings["GCC_PREFIX_HEADER"] = .string("../Target Support Files/\(spec.name)/\(spec.name)-prefix.pch")
                 }
 
@@ -221,24 +222,57 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 }
             }
 
+            func resolveGlobs(manifestPath: Path, globs: [String]) -> [String] {
+                let generatorPaths = try! GeneratorPaths(manifestDirectory: AbsolutePath(validating: manifestPath.pathString))
+                let sources = try! globs
+                    .map { try generatorPaths.resolve(path: Path($0)) }
+                    .compactMap { Array(Glob(pattern: $0.pathString)) }
+                    .reduce(Set<String>()) { partialResult, next in return partialResult.union(next) }
+                return Array(sources)
+            }
+
             let sourceGlobs: [String] = (spec.sourceFiles ?? []).flatMap { cocoaPodsGlob in
                 Podspec.convertToGlob(from: cocoaPodsGlob)
             }
+            let sources = resolveGlobs(manifestPath: manifestPath, globs: sourceGlobs)
+            var sharedCompilerFlags = spec.compilerFlags ?? []
+            var customCompilerFlagsDictionary: [String: [String]] = [:]
 
-            let sources = sourceGlobs
-                .map { Glob(pattern: $0) }
-                .reduce([String]()) { partialResult, next in return partialResult + next }
+            func filterSources(_ sources: [String], hasExtensionIn extensions: [String]) -> [String] {
+                sources
+                    .filter { path in
+                        let ext = (path as NSString).pathExtension
+                        guard !ext.isEmpty else { return false }
+                        return extensions
+                            .contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
+                    }
+            }
 
-            var compilerFlags = spec.compilerFlags ?? []
-            
+            func isSource(_ source: String, hasExtensionIn extensions: [String]) -> Bool {
+                let ext = (source as NSString).pathExtension
+                guard !ext.isEmpty else { return false }
+                return extensions.contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
+            }
+
+            func compilerFlags(for filePath: String) -> [String] {
+                if isSource(filePath, hasExtensionIn: ["s"]) { return [] }
+                return sharedCompilerFlags + (customCompilerFlagsDictionary[filePath] ?? [])
+            }
+
+            let validSources = filterSources(sources, hasExtensionIn: Target.validSourceExtensions)
+
             switch spec.requiresArc {
             case .bool(let boolValue):
                 if boolValue == false {
-                    compilerFlags.append("-fno-objc-arc")
+                    sharedCompilerFlags.append("-fno-objc-arc")
                 }
-            case .implicitStringList(let implicitStringList):
-                break
-            case .error, .none:
+            case .array(let globs):
+                let sourcesWhoRequireArc = resolveGlobs(manifestPath: manifestPath, globs: globs)
+                let sourcesWhoDoNotRequireArc = Set(validSources).subtracting(sourcesWhoRequireArc)
+                for source in sourcesWhoDoNotRequireArc {
+                    customCompilerFlagsDictionary[source, default: []] += ["-fno-objc-arc"]
+                }
+            case .none:
                 break
             }
 
@@ -287,7 +321,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 return result
             }()
 
-            externalProjects[path] = ProjectDescription.Project(
+            externalProjects[manifestPath] = ProjectDescription.Project(
                 name: spec.name,
                 settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
                 targets: [
@@ -300,12 +334,12 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         deploymentTargets: .iOS("12.0"),
                         infoPlist: .default,
                         sources: {
-                            if !sources.isEmpty {
+                            if !validSources.isEmpty {
                                 return ProjectDescription.SourceFilesList(
-                                    globs: sources.map {
-                                        ProjectDescription.SourceFileGlob.glob(
+                                    globs: validSources.map {
+                                        ProjectDescription.SourceFileGlob.file(
                                             Path($0),
-                                            compilerFlags: compilerFlags.joined(separator: "")
+                                            compilerFlags: compilerFlags(for: $0).joined(separator: " ")
                                         )
                                     }
                                 )
@@ -341,7 +375,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 resourceSynthesizers: [.plists()]
             )
             externalDependencies[spec.name] = [
-                .project(target: spec.name, path: path, condition: nil)
+                .project(target: spec.name, path: manifestPath, condition: nil)
             ]
         }
 

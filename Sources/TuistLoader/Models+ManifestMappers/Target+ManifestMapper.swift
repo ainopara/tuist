@@ -192,7 +192,7 @@ extension TuistGraph.Target {
         var playgrounds: Set<AbsolutePath> = []
 
         // Sources
-        let allSources = try TuistGraph.Target.sources(targetName: targetName, sources: manifest.sources?.globs.map { glob in
+        var allSources = try TuistGraph.Target.sources(targetName: targetName, sources: manifest.sources?.globs.filter { !$0.isSingleFile }.map { glob in
             let globPath = try generatorPaths.resolve(path: glob.glob).pathString
             let excluding: [String] = try glob.excluding.compactMap { try generatorPaths.resolve(path: $0).pathString }
             let mappedCodeGen = glob.codeGen.map(TuistGraph.FileCodeGen.from)
@@ -204,6 +204,18 @@ extension TuistGraph.Target {
                 compilationCondition: glob.compilationCondition?.asGraphCondition
             )
         } ?? [])
+
+        let files: [ProjectDescription.SourceFileGlob] = manifest.sources?.globs ?? []
+        allSources += try files
+            .filter { $0.isSingleFile }
+            .map { (file: ProjectDescription.SourceFileGlob) in
+                return TuistGraph.SourceFile(
+                    path: try AbsolutePath(validating: generatorPaths.resolve(path: file.glob).pathString),
+                    compilerFlags: file.compilerFlags,
+                    codeGen: file.codeGen.map(TuistGraph.FileCodeGen.from),
+                    compilationCondition: file.compilationCondition?.asGraphCondition
+                )
+            }
 
         for sourceFile in allSources {
             if sourceFile.path.extension == "playground" {

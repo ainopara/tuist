@@ -40,7 +40,7 @@ public struct GeneratorPaths {
 
     /// Given a project description path, it returns the absolute path of the given path.
     /// - Parameter path: Absolute path.
-    func resolve(path: Path) throws -> AbsolutePath {
+    public func resolve(path: Path) throws -> AbsolutePath {
         switch path.type {
         case .relativeToCurrentFile:
             let callerAbsolutePath = try AbsolutePath(validating: path.callerPath!).removingLastComponent()

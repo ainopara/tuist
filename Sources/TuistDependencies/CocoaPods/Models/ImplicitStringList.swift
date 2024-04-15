@@ -38,19 +38,24 @@ public extension KeyedDecodingContainer {
     }
 }
 
-public enum BoolOrImplicitStringList: Decodable {
+
+
+public enum BoolOrImplicitStringList: Decodable, Equatable {
     case bool(Bool)
-    case implicitStringList(ImplicitStringList)
-    case error
+    case array([String])
+
+    struct DecodingError: Error {
+        let message: String
+    }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let value = try? container.decode(Bool.self) {
             self = .bool(value)
-        } else if let value = try? container.decode(ImplicitStringList.self) {
-            self = .implicitStringList(value)
+        } else if let value = try? container.decode(ImplicitStringList.self).wrappedValue {
+            self = .array(value)
         } else {
-            self = .error
+            throw DecodingError(message: "Unknown Value for BoolOrImplicitStringList")
         }
     }
 }

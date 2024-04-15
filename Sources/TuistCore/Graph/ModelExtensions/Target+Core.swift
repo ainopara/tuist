@@ -100,4 +100,44 @@ extension Target {
 
         return Array(sourceFiles.values)
     }
+
+    public static func sources(targetName: String, singleSources: [SourceFileGlob]) throws -> [TuistGraph.SourceFile] {
+        var sourceFiles: [AbsolutePath: TuistGraph.SourceFile] = [:]
+        var invalidGlobs: [InvalidGlob] = []
+
+        for source in singleSources {
+            let sourcePath = try AbsolutePath(validating: source.glob)
+            let base = try AbsolutePath(validating: sourcePath.dirname)
+
+            let paths: [AbsolutePath]
+
+            do {
+                paths = try FileHandler.shared
+                    .throwingGlob(base, glob: sourcePath.basename)
+                    .filter { !$0.isInOpaqueDirectory }
+            } catch let GlobError.nonExistentDirectory(invalidGlob) {
+                paths = []
+                invalidGlobs.append(invalidGlob)
+            }
+
+            Set(paths)
+                .filter { path in
+                    guard let `extension` = path.extension else { return false }
+                    return Target.validSourceExtensions
+                        .contains(where: { $0.caseInsensitiveCompare(`extension`) == .orderedSame })
+                }
+                .forEach { sourceFiles[$0] = SourceFile(
+                    path: $0,
+                    compilerFlags: source.compilerFlags,
+                    codeGen: source.codeGen,
+                    compilationCondition: source.compilationCondition
+                ) }
+        }
+
+        if !invalidGlobs.isEmpty {
+             throw TargetError.invalidSourcesGlob(targetName: targetName, invalidGlobs: invalidGlobs)
+        }
+
+        return Array(sourceFiles.values)
+    }
 }

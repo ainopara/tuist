@@ -96,6 +96,7 @@ public class Subspec: Decodable {
 public extension Subspec {
 
     func merge(_ other: Subspec) {
+        other.extractPlatformConfigs()
         if let otherPlatforms = other.platforms {
             if self.platforms == nil {
                 self.platforms = other.platforms
@@ -140,6 +141,26 @@ public extension Subspec {
         if other.preservePaths != nil {
             self.preservePaths = (self.preservePaths ?? []) + (other.preservePaths ?? [])
         }
+
+        if let otherRequiresArc = other.requiresArc {
+            if let selfRequireArc = self.requiresArc {
+                switch (selfRequireArc, otherRequiresArc) {
+                case (.bool, .bool(let newValue)):
+                    self.requiresArc = .bool(newValue)
+                case (.bool(true), .array):
+                    break
+                case (.bool(false), .array(let newArray)):
+                    self.requiresArc = .array(newArray)
+                case (.array(_), .bool(let newValue)):
+                    self.requiresArc = .bool(newValue)
+                case (.array(let array1), .array(let array2)):
+                    self.requiresArc = .array(Array(Set(array1 + array2)))
+                }
+            } else {
+                self.requiresArc = otherRequiresArc
+            }
+        }
+
         if other.resources != nil {
             self.resources = (self.resources ?? []) + (other.resources ?? [])
         }
