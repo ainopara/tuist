@@ -153,6 +153,31 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
     }
 
+    func resolveGlobs(manifestPath: Path, globs: [String]) -> [String] {
+        let generatorPaths = try! GeneratorPaths(manifestDirectory: AbsolutePath(validating: manifestPath.pathString))
+        let sources = try! globs
+            .map { try generatorPaths.resolve(path: Path($0)) }
+            .compactMap { Array(Glob(pattern: $0.pathString)) }
+            .reduce(Set<String>()) { partialResult, next in return partialResult.union(next) }
+        return Array(sources)
+    }
+
+    func filterSources(_ sources: [String], hasExtensionIn extensions: [String]) -> [String] {
+        sources
+            .filter { path in
+                let ext = (path as NSString).pathExtension
+                guard !ext.isEmpty else { return false }
+                return extensions
+                    .contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
+            }
+    }
+
+    func isSource(_ source: String, hasExtensionIn extensions: [String]) -> Bool {
+        let ext = (source as NSString).pathExtension
+        guard !ext.isEmpty else { return false }
+        return extensions.contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
+    }
+
     func generateProjectDescription(
         for spec: Podspec,
         descriptionBaseSettings: ProjectDescription.SettingsDictionary,
@@ -164,9 +189,23 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
 
-        if spec.isWrapperPod {
+        let manifestPath = Path(podsDirectoryPath.appending(component: spec.name).pathString)
+        let sourceGlobs: [String] = (spec.sourceFiles ?? []).flatMap { cocoaPodsGlob in
+            Podspec.convertToGlob(from: cocoaPodsGlob)
+        }
+        let sources = resolveGlobs(manifestPath: manifestPath, globs: sourceGlobs)
+        let validSources = filterSources(sources, hasExtensionIn: Target.validSourceExtensions)
+
+        let noSource = validSources.isEmpty
+        let hasVendoredFramework = !(spec.vendoredFrameworks ?? []).isEmpty
+        let hasVendoredLibrary = !(spec.vendoredLibraries ?? []).isEmpty
+        let isWrapperPod = noSource && (hasVendoredFramework || hasVendoredLibrary)
+
+        if isWrapperPod {
             var result = [ProjectDescription.TargetDependency]()
             result += spec.expandVendoredFramework(podsPath: podsDirectoryPath)
+            result += spec.expandVendoredLibaray(podsPath: podsDirectoryPath)
+            
             result += (spec.libraries ?? []) .map {
                 .sdk(name: $0, type: .library, status: .required, condition: nil)
             }
@@ -178,9 +217,9 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             result += (spec.weakFrameworks ?? []).map {
                 .sdk(name: $0, type: .framework, status: .optional, condition: nil)
             }
+
             externalDependencies[spec.name] = result
         } else {
-            let manifestPath = Path(podsDirectoryPath.appending(component: spec.name).pathString)
 
             var specSpecificConfigurations = descriptionConfigurations
             for (index, configuration) in specSpecificConfigurations.enumerated() {
@@ -222,44 +261,13 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 }
             }
 
-            func resolveGlobs(manifestPath: Path, globs: [String]) -> [String] {
-                let generatorPaths = try! GeneratorPaths(manifestDirectory: AbsolutePath(validating: manifestPath.pathString))
-                let sources = try! globs
-                    .map { try generatorPaths.resolve(path: Path($0)) }
-                    .compactMap { Array(Glob(pattern: $0.pathString)) }
-                    .reduce(Set<String>()) { partialResult, next in return partialResult.union(next) }
-                return Array(sources)
-            }
-
-            let sourceGlobs: [String] = (spec.sourceFiles ?? []).flatMap { cocoaPodsGlob in
-                Podspec.convertToGlob(from: cocoaPodsGlob)
-            }
-            let sources = resolveGlobs(manifestPath: manifestPath, globs: sourceGlobs)
             var sharedCompilerFlags = spec.compilerFlags ?? []
             var customCompilerFlagsDictionary: [String: [String]] = [:]
-
-            func filterSources(_ sources: [String], hasExtensionIn extensions: [String]) -> [String] {
-                sources
-                    .filter { path in
-                        let ext = (path as NSString).pathExtension
-                        guard !ext.isEmpty else { return false }
-                        return extensions
-                            .contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
-                    }
-            }
-
-            func isSource(_ source: String, hasExtensionIn extensions: [String]) -> Bool {
-                let ext = (source as NSString).pathExtension
-                guard !ext.isEmpty else { return false }
-                return extensions.contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
-            }
 
             func compilerFlags(for filePath: String) -> [String] {
                 if isSource(filePath, hasExtensionIn: ["s"]) { return [] }
                 return sharedCompilerFlags + (customCompilerFlagsDictionary[filePath] ?? [])
             }
-
-            let validSources = filterSources(sources, hasExtensionIn: Target.validSourceExtensions)
 
             switch spec.requiresArc {
             case .bool(let boolValue):
@@ -533,6 +541,43 @@ extension Podspec {
                 } else {
                     return [.framework(path: Path(pathString), status: .required, condition: nil)]
                 }
+            }
+        }
+    }
+
+    func expandVendoredLibaray(podsPath: AbsolutePath) -> [ProjectDescription.TargetDependency] {
+        return (self.vendoredLibraries ?? []).flatMap { glob -> [ProjectDescription.TargetDependency] in
+            let pathString = podsPath
+                .appending(component: self.name)
+                .appending(try! RelativePath(validating: glob))
+                .pathString
+
+            let headerPath: Path = {
+                if let headerDir = self.headerDir {
+                    return Path(
+                        podsPath
+                            .appending(component: "Headers")
+                            .appending(component: "Public")
+                            .appending(component: self.name)
+                            .pathString
+                    )
+                } else {
+                    return Path(
+                        podsPath
+                            .appending(component: "Headers")
+                            .appending(component: "Public")
+                            .pathString
+                    )
+                }
+            }()
+
+            if pathString.contains("*") {
+                return Array(Glob(pattern: pathString))
+                    .map { path in
+                        return .library(path: Path(path), publicHeaders: headerPath, swiftModuleMap: nil)
+                    }
+            } else {
+                return [.library(path: Path(pathString), publicHeaders: headerPath, swiftModuleMap: nil)]
             }
         }
     }

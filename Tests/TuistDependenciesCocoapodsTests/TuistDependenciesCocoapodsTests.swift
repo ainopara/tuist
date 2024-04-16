@@ -623,5 +623,127 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "aes/openssl/openssl_md5_dgst.cpp",
             "aes/AESCrypt.cpp"
         ]))
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+        
+        XCTAssertNoDifference(project.values.first!.targets[0].headers?.public?.globs.map(\.glob.pathString), [
+            "Core/MMBuffer.h",
+            "Core/MMKV.h",
+            "Core/MMKVLog.h",
+            "Core/MMKVPredef.h",
+            "Core/PBUtility.h",
+            "Core/ScopedLock.hpp",
+            "Core/ThreadLock.h",
+            "Core/aes/openssl/openssl_md5.h",
+            "Core/aes/openssl/openssl_opensslconf.h",
+            "../Target Support Files/MMKVCore/MMKVCore-umbrella.h"
+        ])
+        XCTAssertNoDifference(project.values.first!.targets[0].headers?.private?.globs.map(\.glob.pathString), [])
+        XCTAssertNoDifference(project.values.first!.targets[0].headers?.project?.globs.map(\.glob.pathString), [
+            "Core/*",
+            "Core/*.h",
+            "Core/*.cpp",
+            "Core/*.hpp",
+            "Core/aes/*",
+            "Core/aes/openssl/*",
+            "Core/crc32/*.h"
+        ])
+
+        XCTAssertNoDifference(dependencies, [
+            "MMKVCore": [
+                .project(
+                    target: "MMKVCore",
+                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore")
+                )
+            ]
+        ])
+    }
+
+    func testPodspecVendoredLibrary() throws {
+        let specJSON = """
+        {
+          "name": "OpenSSL-Private",
+          "version": "1.0.0",
+          "summary": "OpenSSL for iOS and OS X",
+          "description": "OpenSSL is an SSL/TLS and Crypto toolkit. Deprecated in Mac OS and gone in iOS, this spec gives your project non-deprecated OpenSSL support. Supports OSX and iOS including Simulator (armv7,armv7s,arm64,i386,x86_64).",
+          "homepage": "http://gerrit.zhenguanyu.com/#/admin/projects/ios-module-OpenSSL",
+          "license": {
+            "type": "OpenSSL (OpenSSL/SSLeay)",
+            "text": "LICENSE"
+          },
+          "source": {
+            "git": "ssh://gerrit.zhenguanyu.com:29418/ios-module-OpenSSL",
+            "tag": "1.0.0"
+          },
+          "authors": {
+            "Mark J. Cox": "mark@openssl.org",
+            "Ralf S. Engelschall": "rse@openssl.org",
+            "Dr. Stephen Henson": "steve@openssl.org",
+            "Ben Laurie": "ben@openssl.org",
+            "Lutz Jänicke": "jaenicke@openssl.org",
+            "Nils Larsch": "nils@openssl.org",
+            "Richard Levitte": "nils@openssl.org",
+            "Bodo Möller": "bodo@openssl.org",
+            "Ulf Möller": "ulf@openssl.org",
+            "Andy Polyakov": "appro@openssl.org",
+            "Geoff Thorpe": "geoff@openssl.org",
+            "Holger Reif": "holger@openssl.org",
+            "Paul C. Sutton": "geoff@openssl.org",
+            "Eric A. Young": "eay@cryptsoft.com",
+            "Tim Hudson": "tjh@cryptsoft.com",
+            "Justin Plouffe": "plouffe.justin@gmail.com"
+          },
+          "platforms": {
+            "ios": "6.0"
+          },
+          "source_files": "include/openssl/**/*.h",
+          "public_header_files": "include/openssl/**/*.h",
+          "header_dir": "openssl",
+          "preserve_paths": [
+            "lib/libcrypto.a",
+            "lib/libssl.a"
+          ],
+          "vendored_libraries": [
+            "lib/libcrypto.a",
+            "lib/libssl.a"
+          ],
+          "requires_arc": false
+        }
+
+        """
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(project, [:])
+
+        XCTAssertNoDifference(dependencies, [
+            "OpenSSL-Private": [
+                .library(
+                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libcrypto.a"),
+                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private/openssl"),
+                    swiftModuleMap: nil
+                ),
+                .library(
+                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libssl.a"),
+                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private/openssl"),
+                    swiftModuleMap: nil
+                )
+            ]
+        ])
     }
 }

@@ -209,13 +209,6 @@ public extension Podspec {
         )
     }
 
-    var isWrapperPod: Bool {
-        let noSource = (sourceFiles ?? []).isEmpty
-        let hasVendoredFramework = !(vendoredFrameworks ?? []).isEmpty
-        let hasVendoredLibrary = !(vendoredLibraries ?? []).isEmpty
-        return noSource && (hasVendoredFramework || hasVendoredLibrary)
-    }
-
     var isAggregatePod: Bool {
         let noSource = (sourceFiles ?? []).isEmpty
         return noSource
