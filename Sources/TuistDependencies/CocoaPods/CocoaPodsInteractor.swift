@@ -121,7 +121,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         var subspecDictionarry: [String: [String]] = [:]
-        for case .remote(let name, _, let subpsecs) in dependencies.pods {
+        for case .remote(let name, _, let subpsecs, _, _) in dependencies.pods {
             subspecDictionarry[name] = subpsecs
         }
 
@@ -143,6 +143,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
     public func clean(dependenciesDirectory: AbsolutePath) throws {
 
     }
+
+    // MARK: - Helpers
 
     func convert(_ settingsDictionary: TuistGraph.SettingsDictionary) -> ProjectDescription.SettingsDictionary {
         settingsDictionary.mapValues {
@@ -201,6 +203,9 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let hasVendoredLibrary = !(spec.vendoredLibraries ?? []).isEmpty
         let isWrapperPod = noSource && (hasVendoredFramework || hasVendoredLibrary)
 
+
+        let shouldGenerateModuleMapAndUmbrellaHeader = !validSources.allSatisfy { $0.hasSuffix(".swift") }
+
         if isWrapperPod {
             var result = [ProjectDescription.TargetDependency]()
             result += spec.expandVendoredFramework(podsPath: podsDirectoryPath)
@@ -221,6 +226,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             externalDependencies[spec.name] = result
         } else {
 
+            // MARK: - Configuration and Settings
             var specSpecificConfigurations = descriptionConfigurations
             for (index, configuration) in specSpecificConfigurations.enumerated() {
 
@@ -237,7 +243,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
                 if let moduleMap = spec.moduleMap {
                     specSpecificConfigurations[index].settings["MODULEMAP_FILE"] = .string(moduleMap)
-                } else {
+                } else if shouldGenerateModuleMapAndUmbrellaHeader {
                     let generatedModuleMapPath = try! AbsolutePath(
                         podsDirectoryPath,
                         RelativePath(validating: "Target Support Files/\(spec.name)/\(spec.name).modulemap")
@@ -260,6 +266,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
             }
+
+            // MARK: - Compiler Flags
 
             var sharedCompilerFlags = spec.compilerFlags ?? []
             var customCompilerFlagsDictionary: [String: [String]] = [:]
@@ -284,7 +292,10 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 break
             }
 
+            // MARK: - Headers
+
             let privateHeaderGlobs: [String] = spec.privateHeaderFiles ?? []
+            let privateHeaders = resolveGlobs(manifestPath: manifestPath, globs: privateHeaderGlobs)
 
             let publicHeaderGlobs: [String] = {
                 var result: [String] = []
@@ -296,9 +307,18 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 if let headerDir = spec.headerDir {
                     result += Podspec.convertToGlob(from: headerDir)
                 }
-                result += ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                if shouldGenerateModuleMapAndUmbrellaHeader {
+                    result += ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
+                }
                 return result
             }()
+            let publicHeaders: [String] = resolveGlobs(manifestPath: manifestPath, globs: publicHeaderGlobs)
+                .filter { !privateHeaders.contains($0) }
+
+            let projectHeaders = filterSources(sources, hasExtensionIn: ["h", "hpp"])
+                .filter { !privateHeaders.contains($0) && !publicHeaders.contains($0) }
+
+            // MARK: - Target Dependencies
 
             let depenencies: [ProjectDescription.TargetDependency] = {
                 var result: [ProjectDescription.TargetDependency] = []
@@ -329,9 +349,18 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 return result
             }()
 
+            // MARK: - Target
+
             externalProjects[manifestPath] = ProjectDescription.Project(
                 name: spec.name,
-                settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations),
+                settings: .settings(configurations: descriptionConfigurations.map {
+                    switch $0.variant {
+                    case .debug:
+                        return .debug(name: $0.name)
+                    case .release:
+                        return .release(name: $0.name)
+                    }
+                }),
                 targets: [
                     Target(
                         name: spec.name,
@@ -358,29 +387,18 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         headers: {
                             return ProjectDescription.Headers.headers(
                                 public: FileList.list(
-                                    publicHeaderGlobs.map { (glob: String) -> FileListGlob in
-                                        ProjectDescription.FileListGlob.glob(
-                                            Path(glob),
-                                            excluding: privateHeaderGlobs.map { Path($0) }
-                                        )
-                                    }
+                                    publicHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
                                 ),
                                 private: FileList.list(
-                                    privateHeaderGlobs.map { (glob: String) -> FileListGlob in
-                                        ProjectDescription.FileListGlob.glob(Path(glob))
-                                    }
+                                    privateHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
                                 ),
                                 project: FileList.list(
-                                    sourceGlobs.map { (glob: String) -> FileListGlob in
-                                        ProjectDescription.FileListGlob.glob(
-                                            Path(glob),
-                                            excluding: (publicHeaderGlobs + privateHeaderGlobs).map { Path($0) }
-                                        )
-                                    }
+                                    projectHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
                                 )
                             )
                         }(),
-                        dependencies: depenencies
+                        dependencies: depenencies,
+                        settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations)
                     )
                 ],
                 resourceSynthesizers: [.plists()]
@@ -473,7 +491,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         for dependency in dependencies.pods {
             switch dependency {
-            case .remote(let name, let source, let subspecs):
+            case .remote(let name, let source, let subspecs, let generateModularHeaders, _):
                 podfile += "  pod '\(name)', "
 
                 switch source {
@@ -485,11 +503,17 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     podfile += ":git => '\(source)', :tag => '\(tag)'"
                 case .gitWithCommit(let source, let commit):
                     podfile += ":git => '\(source)', :commit => '\(commit)'"
+                case .gitWithBranch(let source, let branch):
+                    podfile += ":git => '\(source)', :branch => '\(branch)'"
                 }
 
                 if let subspecs {
                     let quoted = subspecs.map { "'\($0)'" }
                     podfile += ", :subspecs => [\(quoted.joined(separator: ", "))]"
+                }
+
+                if !generateModularHeaders {
+                    podfile += ", :modular_headers => false"
                 }
 
                 podfile += "\n"

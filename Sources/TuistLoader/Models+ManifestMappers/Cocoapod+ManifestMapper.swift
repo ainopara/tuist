@@ -28,11 +28,13 @@ extension TuistGraph.CocoaPodsDependencies {
 extension TuistGraph.CocoaPodsDependencies.Pod {
     static func from(manifest: ProjectDescription.Pod) throws -> Self {
         switch manifest {
-        case .remote(let name, let source, let subspecs):
+        case .remote(let name, let source, let subspecs, let generateModularHeaders, let configurations):
             return .remote(
                 name: name,
                 source: try CocoaPodsDependencies.PodSource.from(manifest: source),
-                subspecs: subspecs
+                subspecs: subspecs,
+                generateModularHeaders: generateModularHeaders,
+                configurations: configurations
             )
         }
     }
@@ -49,6 +51,8 @@ extension TuistGraph.CocoaPodsDependencies.PodSource {
             return .gitWithTag(source: source, tag: tag)
         case .gitWithCommit(let source, let commit):
             return .gitWithCommit(source: source, commit: commit)
+        case .gitWithBranch(let source, let branch):
+            return .gitWithBranch(source: source, branch: branch)
         }
     }
 }

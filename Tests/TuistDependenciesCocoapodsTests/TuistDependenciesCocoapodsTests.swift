@@ -631,28 +631,41 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             targetSettings: [:],
             podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
         )
-        
-        XCTAssertNoDifference(project.values.first!.targets[0].headers?.public?.globs.map(\.glob.pathString), [
-            "Core/MMBuffer.h",
-            "Core/MMKV.h",
-            "Core/MMKVLog.h",
-            "Core/MMKVPredef.h",
-            "Core/PBUtility.h",
-            "Core/ScopedLock.hpp",
-            "Core/ThreadLock.h",
-            "Core/aes/openssl/openssl_md5.h",
-            "Core/aes/openssl/openssl_opensslconf.h",
-            "../Target Support Files/MMKVCore/MMKVCore-umbrella.h"
+
+        let headers = project.values.first!.targets[0].headers
+
+        XCTAssertNoDifference(headers!.public!.globs.map(\.glob.pathString).sorted(), [
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMBuffer.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKV.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKVLog.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKVPredef.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/PBUtility.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/ScopedLock.hpp",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/ThreadLock.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_md5.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_opensslconf.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Target Support Files/MMKVCore/MMKVCore-umbrella.h"
         ])
-        XCTAssertNoDifference(project.values.first!.targets[0].headers?.private?.globs.map(\.glob.pathString), [])
-        XCTAssertNoDifference(project.values.first!.targets[0].headers?.project?.globs.map(\.glob.pathString), [
-            "Core/*",
-            "Core/*.h",
-            "Core/*.cpp",
-            "Core/*.hpp",
-            "Core/aes/*",
-            "Core/aes/openssl/*",
-            "Core/crc32/*.h"
+        XCTAssertNoDifference(headers!.private!.globs.map(\.glob.pathString), [])
+        XCTAssertNoDifference(headers!.project!.globs.map(\.glob.pathString).sorted(), [
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/CodedInputData.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/CodedInputDataCrypt.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/CodedOutputData.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/InterProcessLock.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/KeyValueHolder.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKVMetaInfo.hpp",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKV_IO.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKV_OSX.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MemoryFile.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MiniPBCoder.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/PBEncodeItem.hpp",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/AESCrypt.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_aes.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_aes_locl.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_arm_arch.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_md32_common.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_md5_locl.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/crc32/Checksum.h"
         ])
 
         XCTAssertNoDifference(dependencies, [
@@ -735,12 +748,12 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "OpenSSL-Private": [
                 .library(
                     path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libcrypto.a"),
-                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private/openssl"),
+                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private"),
                     swiftModuleMap: nil
                 ),
                 .library(
                     path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libssl.a"),
-                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private/openssl"),
+                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private"),
                     swiftModuleMap: nil
                 )
             ]
