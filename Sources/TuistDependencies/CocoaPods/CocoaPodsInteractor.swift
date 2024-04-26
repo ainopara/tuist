@@ -228,7 +228,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             // MARK: - Configuration and Settings
             var specSpecificConfigurations = descriptionConfigurations
-            for (index, configuration) in specSpecificConfigurations.enumerated() {
+            for index in specSpecificConfigurations.indices {
 
                 if let settings = targetSettings[spec.name] {
                     let convertedSettings = convert(settings)
@@ -295,7 +295,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             // MARK: - Headers
 
             let privateHeaderGlobs: [String] = spec.privateHeaderFiles ?? []
-            let privateHeaders = resolveGlobs(manifestPath: manifestPath, globs: privateHeaderGlobs)
+            var privateHeaders = resolveGlobs(manifestPath: manifestPath, globs: privateHeaderGlobs)
+            privateHeaders = filterSources(privateHeaders, hasExtensionIn: ["h", "hpp"])
 
             let publicHeaderGlobs: [String] = {
                 var result: [String] = []
@@ -312,11 +313,45 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 }
                 return result
             }()
-            let publicHeaders: [String] = resolveGlobs(manifestPath: manifestPath, globs: publicHeaderGlobs)
+            var publicHeaders: [String] = resolveGlobs(manifestPath: manifestPath, globs: publicHeaderGlobs)
                 .filter { !privateHeaders.contains($0) }
+            publicHeaders = filterSources(publicHeaders, hasExtensionIn: ["h", "hpp"])
 
-            let projectHeaders = filterSources(sources, hasExtensionIn: ["h", "hpp"])
+            var projectHeaders = filterSources(sources, hasExtensionIn: ["h", "hpp"])
                 .filter { !privateHeaders.contains($0) && !publicHeaders.contains($0) }
+
+            var copyFileActions: [ProjectDescription.CopyFilesAction] = []
+
+            if let headerMappingsDir = spec.headerMappingsDir {
+                let generatorPaths = try! GeneratorPaths(manifestDirectory: AbsolutePath(validating: manifestPath.pathString))
+                let headerMappingDirAbsolutePath = try! generatorPaths.resolve(path: Path(headerMappingsDir))
+                let headersToPeserveFolderStructure = publicHeaders.filter { $0.hasPrefix(headerMappingDirAbsolutePath.pathString) }
+                projectHeaders += headersToPeserveFolderStructure
+                publicHeaders = publicHeaders.filter { !headersToPeserveFolderStructure.contains($0) }
+
+                let headersGroupedByFolders = Dictionary(grouping: headersToPeserveFolderStructure, by: { filePath in
+                    if let index = filePath.lastIndex(of: "/") {
+                        let directoryPath = String(filePath[..<index])
+                        return directoryPath
+                    } else {
+                        return ""
+                    }
+                })
+
+                for (groupedFolder, headerFiles) in headersGroupedByFolders {
+                    var relativeFolder = groupedFolder.replacingOccurrences(of: headerMappingDirAbsolutePath.pathString, with: "")
+                    if relativeFolder.hasPrefix("/") {
+                        relativeFolder.removeFirst()
+                    }
+                    copyFileActions.append(
+                        .productsDirectory(
+                            name: "Copy \(relativeFolder) Public Headers",
+                            subpath: "$(PUBLIC_HEADERS_FOLDER_PATH)/\(relativeFolder)",
+                            files: headerFiles.map { .glob(pattern: .relativeToRoot($0)) }
+                        )
+                    )
+                }
+            }
 
             // MARK: - Target Dependencies
 
@@ -384,6 +419,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                                 return nil
                             }
                         }(),
+                        copyFiles: copyFileActions,
                         headers: {
                             return ProjectDescription.Headers.headers(
                                 public: FileList.list(
@@ -577,7 +613,7 @@ extension Podspec {
                 .pathString
 
             let headerPath: Path = {
-                if let headerDir = self.headerDir {
+                if self.headerDir != nil {
                     return Path(
                         podsPath
                             .appending(component: "Headers")

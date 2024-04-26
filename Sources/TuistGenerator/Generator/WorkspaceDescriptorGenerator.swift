@@ -145,7 +145,7 @@ final class WorkspaceDescriptorGenerator: WorkspaceDescriptorGenerating {
             }
         }
         if graphTraverser.name == "Leo" {
-            workspaceData.children.append(workspaceFileElement(path: RelativePath("Pods/Pods.xcodeproj")))
+            workspaceData.children.append(workspaceFileElement(path: try! RelativePath(validating: "Pods/Pods.xcodeproj")))
         }
 
         // Schemes
