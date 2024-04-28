@@ -274,7 +274,11 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             func compilerFlags(for filePath: String) -> [String] {
                 if isSource(filePath, hasExtensionIn: ["s"]) { return [] }
-                return sharedCompilerFlags + (customCompilerFlagsDictionary[filePath] ?? [])
+                var result = sharedCompilerFlags + (customCompilerFlagsDictionary[filePath] ?? [])
+                if isSource(filePath, hasExtensionIn: ["m", "mm", "c", "cpp", "cc"]) {
+                    result += ["-w -Xanalyzer -analyzer-disable-all-checks"]
+                }
+                return result
             }
 
             switch spec.requiresArc {
