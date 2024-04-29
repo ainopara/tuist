@@ -14,6 +14,43 @@ import CustomDump
 
 class TuistDependenciesCocoapodsTests: XCTestCase {
 
+    func testConvertToGlob() {
+        XCTAssertNoDifference(
+            Podspec.expandToValidGlob(from: "ReactCommon"),
+            [
+                "ReactCommon/*",
+            ]
+        )
+        XCTAssertNoDifference(
+            Podspec.expandToValidGlob(from: "ReactCommon/yoga/yoga/{Yoga,YGEnums,YGMacros,YGNode,YGStyle,YGValue}.h"),
+            [
+                "ReactCommon/yoga/yoga/Yoga.h",
+                "ReactCommon/yoga/yoga/YGEnums.h",
+                "ReactCommon/yoga/yoga/YGMacros.h",
+                "ReactCommon/yoga/yoga/YGNode.h",
+                "ReactCommon/yoga/yoga/YGStyle.h",
+                "ReactCommon/yoga/yoga/YGValue.h"
+            ]
+        )
+        XCTAssertNoDifference(
+            Podspec.expandToValidGlob(from: "ReactCommon/yoga/yoga/*.{h,m}"),
+            [
+                "ReactCommon/yoga/yoga/*.h",
+                "ReactCommon/yoga/yoga/*.m"
+            ]
+        )
+        XCTAssertNoDifference(
+            Podspec.expandToValidGlob(from: "AFNetworking/AF{URL,HTTP}SessionManager.{h,m}"),
+            [
+                "AFNetworking/AFURLSessionManager.h",
+                "AFNetworking/AFURLSessionManager.m",
+                "AFNetworking/AFHTTPSessionManager.h",
+                "AFNetworking/AFHTTPSessionManager.m"
+            ]
+        )
+
+    }
+
     func testPodspecParsingMobileQuickLogin() throws {
         let specJSON = """
         {
@@ -757,6 +794,161 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
                     swiftModuleMap: nil
                 )
             ]
+        ])
+    }
+
+    func testPodspecAFNetworking() throws {
+        let specJSON = """
+        {
+          "name": "AFNetworking",
+          "version": "4.0.1",
+          "license": "MIT",
+          "summary": "A delightful networking framework for Apple platforms.",
+          "homepage": "https://github.com/AFNetworking/AFNetworking",
+          "social_media_url": "https://twitter.com/AFNetworking",
+          "authors": {
+            "Mattt Thompson": "m@mattt.me"
+          },
+          "source": {
+            "git": "https://github.com/AFNetworking/AFNetworking.git",
+            "tag": "4.0.1"
+          },
+          "platforms": {
+            "ios": "9.0",
+            "osx": "10.10",
+            "watchos": "2.0",
+            "tvos": "9.0"
+          },
+          "ios": {
+            "pod_target_xcconfig": {
+              "PRODUCT_BUNDLE_IDENTIFIER": "com.alamofire.AFNetworking"
+            }
+          },
+          "osx": {
+            "pod_target_xcconfig": {
+              "PRODUCT_BUNDLE_IDENTIFIER": "com.alamofire.AFNetworking"
+            }
+          },
+          "watchos": {
+            "pod_target_xcconfig": {
+              "PRODUCT_BUNDLE_IDENTIFIER": "com.alamofire.AFNetworking-watchOS"
+            }
+          },
+          "tvos": {
+            "pod_target_xcconfig": {
+              "PRODUCT_BUNDLE_IDENTIFIER": "com.alamofire.AFNetworking"
+            }
+          },
+          "source_files": "AFNetworking/AFNetworking.h",
+          "deprecated_in_favor_of": "Alamofire",
+          "subspecs": [
+            {
+              "name": "Serialization",
+              "source_files": "AFNetworking/AFURL{Request,Response}Serialization.{h,m}"
+            },
+            {
+              "name": "Security",
+              "source_files": "AFNetworking/AFSecurityPolicy.{h,m}"
+            },
+            {
+              "name": "Reachability",
+              "platforms": {
+                "ios": "9.0",
+                "osx": "10.10",
+                "tvos": "9.0"
+              },
+              "source_files": "AFNetworking/AFNetworkReachabilityManager.{h,m}"
+            },
+            {
+              "name": "NSURLSession",
+              "dependencies": {
+                "AFNetworking/Serialization": [
+
+                ],
+                "AFNetworking/Security": [
+
+                ]
+              },
+              "ios": {
+                "dependencies": {
+                  "AFNetworking/Reachability": [
+
+                  ]
+                }
+              },
+              "osx": {
+                "dependencies": {
+                  "AFNetworking/Reachability": [
+
+                  ]
+                }
+              },
+              "tvos": {
+                "dependencies": {
+                  "AFNetworking/Reachability": [
+
+                  ]
+                }
+              },
+              "source_files": [
+                "AFNetworking/AF{URL,HTTP}SessionManager.{h,m}",
+                "AFNetworking/AFCompatibilityMacros.h"
+              ]
+            },
+            {
+              "name": "UIKit",
+              "platforms": {
+                "ios": "9.0",
+                "tvos": "9.0"
+              },
+              "dependencies": {
+                "AFNetworking/NSURLSession": [
+
+                ]
+              },
+              "source_files": "UIKit+AFNetworking"
+            }
+          ]
+        }
+        """
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        let headers = project.values.first!.targets[0].headers
+
+        XCTAssertNoDifference(headers!.public!.globs.map(\.glob.pathString).sorted(), [
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFCompatibilityMacros.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFHTTPSessionManager.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFNetworkReachabilityManager.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFSecurityPolicy.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFURLRequestSerialization.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFURLResponseSerialization.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFURLSessionManager.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/AFImageDownloader.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIKit+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.h",
+            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Target Support Files/AFNetworking/AFNetworking-umbrella.h"
+        ])
+        XCTAssertNoDifference(headers!.private!.globs.map(\.glob.pathString), [])
+        XCTAssertNoDifference(headers!.project!.globs.map(\.glob.pathString).sorted(), [
+
         ])
     }
 }

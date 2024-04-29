@@ -193,7 +193,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         let manifestPath = Path(podsDirectoryPath.appending(component: spec.name).pathString)
         let sourceGlobs: [String] = (spec.sourceFiles ?? []).flatMap { cocoaPodsGlob in
-            Podspec.convertToGlob(from: cocoaPodsGlob)
+            Podspec.expandToValidGlob(from: cocoaPodsGlob)
         }
         let sources = resolveGlobs(manifestPath: manifestPath, globs: sourceGlobs)
         let validSources = filterSources(sources, hasExtensionIn: Target.validSourceExtensions)
@@ -202,7 +202,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let hasVendoredFramework = !(spec.vendoredFrameworks ?? []).isEmpty
         let hasVendoredLibrary = !(spec.vendoredLibraries ?? []).isEmpty
         let isWrapperPod = noSource && (hasVendoredFramework || hasVendoredLibrary)
-
 
         let shouldGenerateModuleMapAndUmbrellaHeader = !validSources.allSatisfy { $0.hasSuffix(".swift") }
 
@@ -237,7 +236,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                if let moduleName = spec.moduleName {
+                if let moduleName = (spec.moduleName ?? spec.headerDir) {
                     specSpecificConfigurations[index].settings["PRODUCT_MODULE_NAME"] = .string(moduleName)
                 }
 
@@ -305,12 +304,12 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             let publicHeaderGlobs: [String] = {
                 var result: [String] = []
                 if let headerFiles = spec.publicHeaderFiles {
-                    result += headerFiles.flatMap { headerFile in Podspec.convertToGlob(from: headerFile) }
+                    result += headerFiles.flatMap { headerFile in Podspec.expandToValidGlob(from: headerFile) }
                 } else {
                     result += sourceGlobs
                 }
                 if let headerDir = spec.headerDir {
-                    result += Podspec.convertToGlob(from: headerDir)
+                    result += Podspec.expandToValidGlob(from: headerDir)
                 }
                 if shouldGenerateModuleMapAndUmbrellaHeader {
                     result += ["../Target Support Files/\(spec.name)/\(spec.name)-umbrella.h"]
@@ -405,7 +404,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         name: spec.name,
                         destinations: .iOS,
                         product: .staticFramework,
-                        productName: spec.moduleName,
+                        productName: validSources.isEmpty ? (spec.name + "Aggregate") : (spec.moduleName ?? spec.headerDir),
                         bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
                         deploymentTargets: .iOS("12.0"),
                         infoPlist: .default,

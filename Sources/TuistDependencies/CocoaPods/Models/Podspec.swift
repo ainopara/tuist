@@ -133,29 +133,39 @@ public struct Podspec: Decodable {
     }
 }
 
+import RegexBuilder
+
 public extension Podspec {
     
-    static func convertToGlob(from cocoapodsGlob: String) -> [String] {
-        let regex = try! NSRegularExpression(pattern: "(.*)\\{(.+)\\}")
+    static func expandToValidGlob(from cocoapodsGlob: String) -> [String] {
+        let regex = try! NSRegularExpression(pattern: "\\{(.+?)\\}")
         let nsrange = NSRange(cocoapodsGlob.startIndex..<cocoapodsGlob.endIndex, in: cocoapodsGlob)
         var results: [String] = []
 
         if let match = regex.firstMatch(in: cocoapodsGlob, options: [], range: nsrange) {
-            let basePath = (cocoapodsGlob as NSString).substring(with: match.range(at: 1))
-            let extensions = (cocoapodsGlob as NSString).substring(with: match.range(at: 2))
+            let replaceRange = match.range(at: 0)
+            let choices = (cocoapodsGlob as NSString).substring(with: match.range(at: 1))
 
-            let extensionsArray = extensions.split(separator: ",")
+            let choiceArray = choices.split(separator: ",")
 
-            for ext in extensionsArray {
-                let newPath = "\(basePath)\(ext)"
+            for choice in choiceArray {
+                let newPath = (cocoapodsGlob as NSString).replacingCharacters(in: replaceRange, with: String(choice))
                 results.append(newPath)
             }
-        } else if !cocoapodsGlob.contains(".") && !cocoapodsGlob.contains("*") {
-            results.append((cocoapodsGlob + "/*").replacingOccurrences(of: "//", with: "/"))
         } else {
             results.append(cocoapodsGlob)
         }
-        return results
+        let validGlobs = results.filter { !$0.contains("{") }
+        let cocoapodGlobs = results.filter { $0.contains("{") }
+        let finalResults = validGlobs + cocoapodGlobs.flatMap { expandToValidGlob(from: $0) }
+        let finalResultsWithStar = finalResults.map {
+            if !$0.contains(".") && !$0.contains("*") {
+                return ($0 + "/*").replacingOccurrences(of: "//", with: "/")
+            } else {
+                return $0
+            }
+        }
+        return finalResultsWithStar
     }
 
     func resolveSubspecNames(selectedSubspecs: [String]?) -> [String] {
