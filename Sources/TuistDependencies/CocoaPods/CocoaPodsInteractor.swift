@@ -201,7 +201,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let noSource = validSources.isEmpty
         let hasVendoredFramework = !(spec.vendoredFrameworks ?? []).isEmpty
         let hasVendoredLibrary = !(spec.vendoredLibraries ?? []).isEmpty
-        let isWrapperPod = noSource && (hasVendoredFramework || hasVendoredLibrary)
+        let hasHeaderDir = !(spec.headerDir ?? "").isEmpty
+        let isWrapperPod = noSource && (hasVendoredFramework || hasVendoredLibrary || hasHeaderDir)
 
         let shouldGenerateModuleMapAndUmbrellaHeader = !validSources.allSatisfy { $0.hasSuffix(".swift") }
 
@@ -220,6 +221,18 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             result += (spec.weakFrameworks ?? []).map {
                 .sdk(name: $0, type: .framework, status: .optional, condition: nil)
+            }
+
+            if spec.headerDir != nil {
+                let path = podsDirectoryPath
+                    .appending(component: "Headers")
+                    .appending(component: "Public")
+                    .appending(component: spec.name)
+                result.append(.headerSearchPath(path: Path(path.pathString)))
+                let rootPath = podsDirectoryPath
+                    .appending(component: "Headers")
+                    .appending(component: "Public")
+                result.append(.headerSearchPath(path: Path(rootPath.pathString)))
             }
 
             externalDependencies[spec.name] = result

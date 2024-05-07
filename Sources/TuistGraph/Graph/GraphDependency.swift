@@ -88,6 +88,8 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
     /// A dependency that represents an SDK
     case sdk(name: String, path: AbsolutePath, status: SDKStatus, source: SDKSource)
 
+    case headerSearchPath(path: AbsolutePath)
+
     public func hash(into hasher: inout Hasher) {
         switch self {
         case let .macro(path):
@@ -118,6 +120,9 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             hasher.combine(path)
             hasher.combine(status)
             hasher.combine(source)
+        case let .headerSearchPath(path):
+            hasher.combine("headerSearchPath")
+            hasher.combine(path)
         }
     }
 
@@ -131,6 +136,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return false
         case .target: return true
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -148,6 +154,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -165,6 +172,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -178,6 +186,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return true
         }
     }
 
@@ -191,6 +200,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return true
         case .target: return true
         case .sdk: return true
+        case .headerSearchPath: return false
         }
     }
 
@@ -204,6 +214,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -219,6 +230,21 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return false
+        }
+    }
+
+    public var isHeaderSearchPath: Bool {
+        switch self {
+        case .macro: return false
+        case .xcframework: return false
+        case .framework: return false
+        case .library: return false
+        case .bundle: return false
+        case .packageProduct: return false
+        case .target: return false
+        case .sdk: return false
+        case .headerSearchPath: return true
         }
     }
 
@@ -253,6 +279,8 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             return "target '\(name)'"
         case .sdk:
             return "sdk '\(name)'"
+        case .headerSearchPath:
+            return "headerSearchPath '\(name)'"
         }
     }
 
@@ -274,6 +302,8 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             return name
         case let .sdk(name, _, _, _):
             return name
+        case let .headerSearchPath(path):
+            return path.pathString
         }
     }
 

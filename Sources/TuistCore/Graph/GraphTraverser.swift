@@ -490,10 +490,37 @@ public class GraphTraverser: GraphTraversing {
     public func librariesPublicHeadersFolders(path: AbsolutePath, name: String) -> Set<AbsolutePath> {
         let dependencies = graph.dependencies[.target(name: name, path: path), default: []]
         let libraryPublicHeaders = dependencies.compactMap { dependency -> AbsolutePath? in
-            guard case let GraphDependency.library(_, publicHeaders, _, _, _) = dependency else { return nil }
-            return publicHeaders
+            switch dependency {
+            case let GraphDependency.library(_, publicHeaders, _, _, _):
+                return publicHeaders
+            case let GraphDependency.headerSearchPath(path):
+                return path
+            default:
+                return nil
+            }
         }
-        return Set(libraryPublicHeaders)
+        
+        // Apply headerSearchPath
+        let from = GraphDependency.target(name: name, path: path)
+        let headerSearchPaths = filterDependencies(
+            from: from,
+            test: { $0.isHeaderSearchPath }
+        )
+        .lazy
+        .compactMap { (dependency: GraphDependency) -> AbsolutePath? in
+            switch dependency {
+            case .xcframework: return nil
+            case .framework: return nil
+            case .macro: return nil
+            case .library: return nil
+            case .bundle: return nil
+            case .packageProduct: return nil
+            case .target: return nil
+            case .sdk: return nil
+            case let .headerSearchPath(path): return path
+            }
+        }
+        return Set(libraryPublicHeaders + headerSearchPaths)
     }
 
     public func librariesSearchPaths(path: AbsolutePath, name: String) throws -> Set<AbsolutePath> {
@@ -558,6 +585,7 @@ public class GraphTraverser: GraphTraversing {
             case .packageProduct: return nil
             case .target: return nil
             case .sdk: return nil
+            case .headerSearchPath: return nil
             }
         }
         .map(\.parentDirectory)
@@ -687,14 +715,14 @@ public class GraphTraverser: GraphTraversing {
                 return !precompiledMacroDependencies(dependency).isEmpty
             case .macro:
                 return true
-            case .bundle, .library, .framework, .sdk, .target, .packageProduct:
+            case .bundle, .library, .framework, .sdk, .target, .packageProduct, .headerSearchPath:
                 return false
             }
         }, skip: { dependency in
             switch dependency {
             case .macro:
                 return true
-            case .bundle, .library, .framework, .sdk, .target, .packageProduct, .xcframework:
+            case .bundle, .library, .framework, .sdk, .target, .packageProduct, .xcframework, .headerSearchPath:
                 return false
             }
         })
@@ -704,7 +732,7 @@ public class GraphTraverser: GraphTraversing {
                 return Array(precompiledMacroDependencies(dependency))
             case let .macro(path):
                 return [path]
-            case .bundle, .library, .framework, .sdk, .target, .packageProduct:
+            case .bundle, .library, .framework, .sdk, .target, .packageProduct, .headerSearchPath:
                 return []
             }
         }
@@ -915,7 +943,7 @@ public class GraphTraverser: GraphTraversing {
         switch dependency {
         case .macro:
             return true
-        case .bundle, .framework, .xcframework, .library, .sdk, .target, .packageProduct:
+        case .bundle, .framework, .xcframework, .library, .sdk, .target, .packageProduct, .headerSearchPath:
             return false
         }
     }
@@ -930,6 +958,7 @@ public class GraphTraverser: GraphTraversing {
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -943,6 +972,7 @@ public class GraphTraverser: GraphTraversing {
         case .packageProduct: return false
         case .target: return false
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -986,6 +1016,7 @@ public class GraphTraverser: GraphTraversing {
             guard let target = target(path: path, name: name) else { return false }
             return target.target.product.isStatic
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -1013,6 +1044,7 @@ public class GraphTraverser: GraphTraversing {
             guard let target = target(path: path, name: name) else { return false }
             return target.target.product.isDynamic
         case .sdk: return false
+        case .headerSearchPath: return false
         }
     }
 
@@ -1106,6 +1138,8 @@ public class GraphTraverser: GraphTraversing {
                 status: xcframework.status,
                 condition: condition
             )
+        case .headerSearchPath:
+            return nil
         }
     }
 
@@ -1140,7 +1174,7 @@ public class GraphTraverser: GraphTraversing {
                 switch dependency {
                 case let .framework(_, _, _, _, linking: linking, _, _, _):
                     return linking == .static
-                case .xcframework, .library, .bundle, .packageProduct, .target, .sdk, .macro:
+                case .xcframework, .library, .bundle, .packageProduct, .target, .sdk, .macro, .headerSearchPath:
                     return false
                 }
             }
@@ -1162,7 +1196,7 @@ public class GraphTraverser: GraphTraversing {
                 switch dependency {
                 case let .xcframework(xcframework):
                     return xcframework.linking == .static
-                case .framework, .library, .bundle, .packageProduct, .target, .sdk, .macro:
+                case .framework, .library, .bundle, .packageProduct, .target, .sdk, .macro, .headerSearchPath:
                     return false
                 }
             },

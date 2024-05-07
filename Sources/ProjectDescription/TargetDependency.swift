@@ -141,6 +141,10 @@ public enum TargetDependency: Codable, Hashable {
 
     case cocoaPods(type: SDKType, content: String)
 
+    case headerSearchPath(path: Path)
+
+    case bundle(path: Path)
+
     /// Dependency on system library or framework
     ///
     /// - Parameters:
@@ -185,6 +189,10 @@ public enum TargetDependency: Codable, Hashable {
             return "external"
         case .cocoaPods:
             return "cocoaPods"
+        case .headerSearchPath:
+            return "headerSearchPath"
+        case .bundle:
+            return "bundle"
         }
     }
 }

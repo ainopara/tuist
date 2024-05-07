@@ -176,7 +176,7 @@ class StaticProductsGraphLinter: StaticProductsGraphLinting {
         case let .target(name, path):
             guard let target = graphTraverser.target(path: path, name: name) else { return false }
             return target.target.product.isStatic
-        case .sdk, .macro:
+        case .sdk, .macro, .headerSearchPath:
             return false
         }
     }

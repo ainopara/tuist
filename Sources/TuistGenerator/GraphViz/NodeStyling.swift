@@ -81,6 +81,8 @@ extension GraphDependency {
         case let .target(name: name, path: path):
             return graphTraverser.target(path: path, name: name)
                 .map(\.styleAttributes)
+        case .headerSearchPath:
+            return .init(fillColorName: .beige, shape: .circle)
         }
     }
 }

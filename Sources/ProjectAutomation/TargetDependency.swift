@@ -21,5 +21,7 @@ public enum TargetDependency: Equatable, Hashable, Codable {
     case packageMacro(product: String)
     case sdk(name: String, status: SDKStatus)
     case cocoaPods(content: String)
+    case headerSearchPath(path: String)
+    case bundle(path: String)
     case xctest
 }

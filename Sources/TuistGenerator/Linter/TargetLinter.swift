@@ -312,6 +312,10 @@ extension TargetDependency {
             return "xctest"
         case .cocoaPods:
             return "cocoaPods"
+        case .bundle:
+            return "bundle"
+        case .headerSearchPath:
+            return "headerSearchPath"
         }
     }
 
@@ -335,6 +339,10 @@ extension TargetDependency {
             return "xctest"
         case let .cocoaPods(_, content):
             return "cocoaPods-\(content)"
+        case let .bundle(path):
+            return path.basename
+        case let .headerSearchPath(path):
+            return "headerSearchPath-\(path)"
         }
     }
 }

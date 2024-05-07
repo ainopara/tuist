@@ -93,6 +93,7 @@ extension TuistGraph.TargetDependency {
             }
 
             return dependencies.map { $0.withCondition(condition?.asGraphCondition) }
+        
         case let .cocoaPods(type, content):
             switch type {
             case .library:
@@ -100,7 +101,12 @@ extension TuistGraph.TargetDependency {
             case .framework:
                 return [.cocoaPods(type: .framework, content: content)]
             }
+        case .headerSearchPath(let path):
+            return [.headerSearchPath(path: try generatorPaths.resolve(path: path))]
+        case .bundle(let path):
+            return [.bundle(path: try generatorPaths.resolve(path: path))]
         }
+
     }
 }
 

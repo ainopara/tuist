@@ -59,7 +59,7 @@ extension GraphDependency {
         switch self {
         case let .target(_, path):
             return projects[path]?.isExternal ?? false
-        case .framework, .xcframework, .library, .bundle, .packageProduct, .sdk, .macro:
+        case .framework, .xcframework, .library, .bundle, .packageProduct, .sdk, .macro, .headerSearchPath:
             return true
         }
     }

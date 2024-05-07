@@ -200,6 +200,10 @@ public final class GraphLoader: GraphLoading {
             case .framework:
                 return .target(name: "Pods_\(target.name)", path: path.appending(component: "Pods"))
             }
+        case let .bundle(path):
+            return .bundle(path: path)
+        case let .headerSearchPath(path):
+            return .headerSearchPath(path: path)
         }
     }
 
