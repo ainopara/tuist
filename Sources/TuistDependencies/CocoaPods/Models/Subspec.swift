@@ -49,6 +49,7 @@ public class Subspec: Decodable {
 
     public var podTargetXcconfig: [String: ImplicitStringList]?
     public var userTargetXcconfig: [String: ImplicitStringList]?
+    public var xcconfig: [String: ImplicitStringList]?
     @ImplicitStringList
     public var compilerFlags: [String]?
 
@@ -90,6 +91,7 @@ public class Subspec: Decodable {
         case resourceBundles = "resource_bundles"
         case resources
         case moduleMap
+        case xcconfig
     }
 }
 
@@ -185,6 +187,11 @@ public extension Subspec {
         if other.dependencies != nil {
             self.dependencies = (self.dependencies ?? [:]).merging(other.dependencies ?? [:], uniquingKeysWith: { $1 })
         }
+        if other.xcconfig != nil {
+            self.xcconfig = (self.xcconfig ?? [:]).merging(other.xcconfig ?? [:], uniquingKeysWith: {
+                ImplicitStringList(wrappedValue: ($0.wrappedValue ?? []) + ($1.wrappedValue ?? []))
+            })
+        }
         if other.podTargetXcconfig != nil {
             self.podTargetXcconfig = (self.podTargetXcconfig ?? [:]).merging(other.podTargetXcconfig ?? [:], uniquingKeysWith: {
                 ImplicitStringList(wrappedValue: ($0.wrappedValue ?? []) + ($1.wrappedValue ?? []))
@@ -209,5 +216,16 @@ public extension Subspec {
             merge(ios)
             self.ios = nil
         }
+    }
+
+    func mergeSubspecs(subspecNames: [String]?) -> Subspec {
+        var mergedSubspec = Subspec()
+        mergedSubspec.merge(self)
+        let includeSubspecNames = subspecNames ?? (self.subspecs ?? []).compactMap(\.name)
+        for subsubspec in self.subspecs ?? [] where includeSubspecNames.contains(subsubspec.name!) {
+            let mregedSubsubspec = subsubspec.mergeSubspecs(subspecNames: nil)
+            mergedSubspec.merge(mregedSubsubspec)
+        }
+        return mergedSubspec
     }
 }

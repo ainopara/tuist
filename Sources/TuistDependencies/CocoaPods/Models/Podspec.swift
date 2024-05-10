@@ -191,7 +191,9 @@ public extension Podspec {
 
     func resolvePodspec(selectedSubspecs: [String]?) -> Podspec {
         let subspecNames = self.resolveSubspecNames(selectedSubspecs: selectedSubspecs)
-        let finalValidSubspecs = (self.subspecs ?? []).filter { subspecNames.contains($0.name!) }
+        let finalValidSubspecs = (self.subspecs ?? [])
+            .filter { subspecNames.contains($0.name!) }
+            .map { $0.mergeSubspecs(subspecNames: nil) }
         let mergedSpec = Subspec()
         mergedSpec.name = rootspec.name
 

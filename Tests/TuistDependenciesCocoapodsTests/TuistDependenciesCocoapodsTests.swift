@@ -792,6 +792,12 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
                     path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libssl.a"),
                     publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private"),
                     swiftModuleMap: nil
+                ),
+                .headerSearchPath(
+                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private")
+                ),
+                .headerSearchPath(
+                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public")
                 )
             ]
         ])
@@ -949,6 +955,193 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         XCTAssertNoDifference(headers!.private!.globs.map(\.glob.pathString), [])
         XCTAssertNoDifference(headers!.project!.globs.map(\.glob.pathString).sorted(), [
 
+        ])
+    }
+
+    func testPodspecRCT() throws {
+        let specJSON = #"""
+        {
+          "name": "React-RCTVibration",
+          "version": "0.68.3",
+          "summary": "An API for controlling the vibration hardware of the device.",
+          "homepage": "https://reactnative.dev/",
+          "documentation_url": "https://reactnative.dev/docs/vibration",
+          "license": {
+            "type": "MIT",
+            "file": "LICENSE"
+          },
+          "authors": "Facebook, Inc. and its affiliates",
+          "platforms": {
+            "ios": "11.0"
+          },
+          "compiler_flags": "-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32 -Wno-nullability-completeness",
+          "source": {
+            "git": "ssh://gerrit.zhenguanyu.com:29418/ios-module-VGORNBase",
+            "tag": "v0.68.3"
+          },
+          "source_files": "Libraries/Vibration/*.{m,mm}",
+          "preserve_paths": [
+            "package.json",
+            "LICENSE",
+            "LICENSE-docs"
+          ],
+          "header_dir": "RCTVibration",
+          "pod_target_xcconfig": {
+            "USE_HEADERMAP": "YES",
+            "CLANG_CXX_LANGUAGE_STANDARD": "c++14",
+            "HEADER_SEARCH_PATHS": "\"$(PODS_ROOT)/RCT-Folly\" \"${PODS_ROOT}/Headers/Public/React-Codegen/react/renderer/components\" \"${PODS_CONFIGURATION_BUILD_DIR}/React-Codegen/React_Codegen.framework/Headers\""
+          },
+          "frameworks": "AudioToolbox",
+          "dependencies": {
+            "RCT-Folly": [
+              "2021.06.28.00-v2"
+            ],
+            "FBReactNativeSpec": [
+              "0.68.3"
+            ],
+            "ReactCommon/turbomodule/core": [
+              "0.68.3"
+            ],
+            "React-jsi": [
+              "0.68.3"
+            ],
+            "React-Core/RCTVibrationHeaders": [
+              "0.68.3"
+            ]
+          }
+        }
+        """#
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(spec.dependencies?.keys.sorted(), [
+            "FBReactNativeSpec",
+            "RCT-Folly",
+            "React-Core/RCTVibrationHeaders",
+            "React-jsi",
+            "ReactCommon/turbomodule/core"
+        ])
+
+    }
+
+    func testPodspecReactCommon() throws {
+        let specJSON = #"""
+        {
+          "name": "ReactCommon",
+          "module_name": "ReactCommon",
+          "version": "0.68.3",
+          "summary": "-",
+          "homepage": "https://reactnative.dev/",
+          "license": {
+            "type": "MIT",
+            "file": "LICENSE"
+          },
+          "authors": "Facebook, Inc. and its affiliates",
+          "platforms": {
+            "ios": "11.0"
+          },
+          "source": {
+            "git": "ssh://gerrit.zhenguanyu.com:29418/ios-module-VGORNBase",
+            "tag": "v0.68.3"
+          },
+          "header_dir": "ReactCommon",
+          "compiler_flags": "-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32 -Wno-documentation",
+          "pod_target_xcconfig": {
+            "HEADER_SEARCH_PATHS": "\"$(PODS_ROOT)/boost\" \"$(PODS_ROOT)/RCT-Folly\" \"$(PODS_ROOT)/DoubleConversion\" \"$(PODS_ROOT)/Headers/Private/React-Core\"",
+            "USE_HEADERMAP": "YES",
+            "CLANG_CXX_LANGUAGE_STANDARD": "c++14"
+          },
+          "dependencies": {
+            "React-logger": [
+              "0.68.3"
+            ]
+          },
+          "subspecs": [
+            {
+              "name": "react_debug_core",
+              "source_files": "ReactCommon/react/debug/*.{cpp,h}"
+            },
+            {
+              "name": "turbomodule",
+              "dependencies": {
+                "React-callinvoker": [
+                  "0.68.3"
+                ],
+                "React-perflogger": [
+                  "0.68.3"
+                ],
+                "React-Core": [
+                  "0.68.3"
+                ],
+                "React-cxxreact": [
+                  "0.68.3"
+                ],
+                "React-jsi": [
+                  "0.68.3"
+                ],
+                "RCT-Folly": [
+                  "2021.06.28.00-v2"
+                ],
+                "DoubleConversion": [
+
+                ],
+                "glog": [
+
+                ]
+              },
+              "subspecs": [
+                {
+                  "name": "core",
+                  "source_files": [
+                    "ReactCommon/react/nativemodule/core/ReactCommon/**/*.{cpp,h}",
+                    "ReactCommon/react/nativemodule/core/platform/ios/**/*.{mm,cpp,h}"
+                  ]
+                },
+                {
+                  "name": "samples",
+                  "source_files": [
+                    "ReactCommon/react/nativemodule/samples/ReactCommon/**/*.{cpp,h}",
+                    "ReactCommon/react/nativemodule/samples/platform/ios/**/*.{mm,cpp,h}"
+                  ],
+                  "dependencies": {
+                    "ReactCommon/turbomodule/core": [
+                      "0.68.3"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+        """#
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+
+        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(spec.resolveSubspecNames(selectedSubspecs: nil), ["react_debug_core", "turbomodule"])
+        XCTAssertNoDifference(spec.sourceFiles, [
+            "ReactCommon/react/debug/*.{cpp,h}",
+            "ReactCommon/react/nativemodule/core/ReactCommon/**/*.{cpp,h}",
+            "ReactCommon/react/nativemodule/core/platform/ios/**/*.{mm,cpp,h}",
+            "ReactCommon/react/nativemodule/samples/ReactCommon/**/*.{cpp,h}",
+            "ReactCommon/react/nativemodule/samples/platform/ios/**/*.{mm,cpp,h}"
         ])
     }
 }

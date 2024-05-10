@@ -265,7 +265,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit", "YTKCoreText", "ProtocolBuffers"].contains(spec.name) {
+                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit", "YTKCoreText", "ProtocolBuffers", "React-Core"].contains(spec.name) {
                     specSpecificConfigurations[index].settings["GCC_PREFIX_HEADER"] = .string("../Target Support Files/\(spec.name)/\(spec.name)-prefix.pch")
                 }
 
@@ -273,6 +273,12 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
                 if let podTargetXcconfig = spec.podTargetXcconfig {
                     for (key, value) in podTargetXcconfig {
+                        specSpecificConfigurations[index].settings = specSpecificConfigurations[index].settings
+                            .applying(operation: .add(policy: .merge, settings: [key: .array(value.wrappedValue ?? [])]))
+                    }
+                }
+                if let xcconfig = spec.rootspec.xcconfig {
+                    for (key, value) in xcconfig {
                         specSpecificConfigurations[index].settings = specSpecificConfigurations[index].settings
                             .applying(operation: .add(policy: .merge, settings: [key: .array(value.wrappedValue ?? [])]))
                     }
