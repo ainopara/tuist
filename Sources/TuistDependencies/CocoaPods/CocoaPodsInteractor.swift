@@ -265,7 +265,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit", "YTKCoreText", "ProtocolBuffers", "React-Core"].contains(spec.name) {
+                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit", "YTKCoreText", "ProtocolBuffers", "React-Core", "VGOCamera"].contains(spec.name) {
                     specSpecificConfigurations[index].settings["GCC_PREFIX_HEADER"] = .string("../Target Support Files/\(spec.name)/\(spec.name)-prefix.pch")
                 }
 

@@ -419,30 +419,6 @@ public class GraphTraverser: GraphTraversing {
 
         references.formUnion(dynamicLibrariesAndFrameworks)
 
-        // Link Pods
-        if target.target.dependencies.contains(where: { dependency in
-            switch dependency {
-            case .cocoaPods(let type, _) where type == .library :
-                return true
-            default:
-                return false
-            }
-        }) {
-            references.formUnion([
-                .product(target: "Pods-\(name)", productName: "Pods-\(name).a", condition: nil)
-            ])
-        } else if target.target.dependencies.contains(where: { dependency in
-            switch dependency {
-            case .cocoaPods(let type, _) where type == .framework:
-                return true
-            default:
-                return false
-            }
-        }) {
-            references.formUnion([
-                .product(target: "Pods-\(name)", productName: "Pods_\(name).framework", condition: nil)
-            ])
-        }
         return references
     }
 
@@ -680,9 +656,9 @@ public class GraphTraverser: GraphTraversing {
         let allTargetExternalDependendedUponTargets = filterDependencies(from: graphDependenciesWithExternalDependencies)
             .compactMap { graphDependency -> GraphTarget? in
                 if case let GraphDependency.target(name, path) = graphDependency {
-                    if name.hasPrefix("Pods_") || name.hasPrefix("libPods-") {
-                        return nil
-                    }
+//                    if name.hasPrefix("Pods_") || name.hasPrefix("libPods-") {
+//                        return nil
+//                    }
                     let target = graph.targets[path]![name]!
                     let project = graph.projects[path]!
                     return GraphTarget(path: path, target: target, project: project)

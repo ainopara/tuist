@@ -193,13 +193,6 @@ public final class GraphLoader: GraphLoading {
             return try platforms.map { platform in
                 try loadXCTestSDK(platform: platform)
             }.first
-        case let .cocoaPods(type, _):
-            switch type {
-            case .library:
-                return .target(name: "libPods-\(target.name)", path: path.appending(component: "Pods"))
-            case .framework:
-                return .target(name: "Pods_\(target.name)", path: path.appending(component: "Pods"))
-            }
         case let .bundle(path):
             return .bundle(path: path)
         case let .headerSearchPath(path):

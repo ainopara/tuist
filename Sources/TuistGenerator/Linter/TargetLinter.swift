@@ -310,8 +310,6 @@ extension TargetDependency {
             return "xcframework"
         case .xctest:
             return "xctest"
-        case .cocoaPods:
-            return "cocoaPods"
         case .bundle:
             return "bundle"
         case .headerSearchPath:
@@ -337,8 +335,6 @@ extension TargetDependency {
             return name
         case .xctest:
             return "xctest"
-        case let .cocoaPods(_, content):
-            return "cocoaPods-\(content)"
         case let .bundle(path):
             return path.basename
         case let .headerSearchPath(path):

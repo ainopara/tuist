@@ -139,8 +139,6 @@ public enum TargetDependency: Codable, Hashable {
     ///   - condition: condition under which to use this dependency, `nil` if this should always be used
     case external(name: String, condition: PlatformCondition? = nil)
 
-    case cocoaPods(type: SDKType, content: String)
-
     case headerSearchPath(path: Path)
 
     case bundle(path: Path)
@@ -187,8 +185,6 @@ public enum TargetDependency: Codable, Hashable {
             return "xctest"
         case .external:
             return "external"
-        case .cocoaPods:
-            return "cocoaPods"
         case .headerSearchPath:
             return "headerSearchPath"
         case .bundle:
