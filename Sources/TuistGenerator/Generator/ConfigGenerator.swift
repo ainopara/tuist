@@ -186,28 +186,6 @@ final class ConfigGenerator: ConfigGenerating {
         }
         settingsHelper.extend(buildSettings: &settings, with: configuration?.settings ?? [:])
 
-//        // apply headerSearchPath dependency
-//        let extraHeaderSearchPaths = target.dependencies.compactMap {
-//            if case .headerSearchPath(let value) = $0 {
-//                return value.pathString
-//            } else {
-//                return nil
-//            }
-//        }
-//
-//        if !extraHeaderSearchPaths.isEmpty {
-//            if let value = settings["HEADER_SEARCH_PATHS"] {
-//                switch value {
-//                case .string(let string):
-//                    settings["HEADER_SEARCH_PATHS"] = .array([string] + extraHeaderSearchPaths)
-//                case .array(let array):
-//                    settings["HEADER_SEARCH_PATHS"] = .array(array + extraHeaderSearchPaths)
-//                }
-//            } else {
-//                settings["HEADER_SEARCH_PATHS"] = .array(["$(inherited)"] + extraHeaderSearchPaths)
-//            }
-//        }
-
         let variantBuildConfiguration = XCBuildConfiguration(
             name: buildConfiguration.xcodeValue,
             baseConfiguration: nil,

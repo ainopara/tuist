@@ -98,7 +98,6 @@ extension TuistGraph.TargetDependency {
         case .bundle(let path):
             return [.bundle(path: try generatorPaths.resolve(path: path))]
         }
-
     }
 }
 

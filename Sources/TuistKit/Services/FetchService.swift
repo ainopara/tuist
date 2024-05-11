@@ -90,7 +90,7 @@ final class FetchService {
         return plugins
     }
 
-    private func fetchDependencies(path: AbsolutePath, update: Bool, with plugins: TuistGraph.Plugins) async throws {
+    private func fetchDependencies(path: AbsolutePath, update: Bool, with plugins: TuistGraph.Plugins) throws {
         try manifestLoader.validateHasProjectOrWorkspaceManifest(at: path)
 
         let dependenciesManifestPath = path.appending(

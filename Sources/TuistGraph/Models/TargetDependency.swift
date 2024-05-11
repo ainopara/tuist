@@ -11,11 +11,6 @@ public enum SDKStatus: String, Codable {
     case optional
 }
 
-public enum PodDependencyType: String, Codable {
-    case library
-    case framework
-}
-
 public enum TargetDependency: Equatable, Hashable, Codable {
     public enum PackageType: String, Equatable, Hashable, Codable {
         case runtime

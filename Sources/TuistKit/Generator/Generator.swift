@@ -9,7 +9,6 @@ import TuistLoader
 import TuistPlugin
 import TuistSigning
 import TuistSupport
-import Stencil
 
 public protocol Generating {
     @discardableResult
@@ -49,16 +48,6 @@ public class Generator: Generating {
         return generatedPath
     }
 
-    struct PodFileData: Codable {
-        let targetsPods: [TargetsPod]
-        struct TargetsPod: Codable {
-            let targetName: String
-            let projectName: String
-            let podsList: [String]
-            let hasTestTarget: Bool
-        }
-    }
-
     public func generateWithGraph(path: AbsolutePath) async throws -> (AbsolutePath, Graph) {
         let (graph, sideEffects) = try await load(path: path)
 
@@ -84,8 +73,6 @@ public class Generator: Generating {
         )
 
         printAndFlushPendingLintWarnings()
-
-        logger.notice("Generating finished")
 
         return (workspaceDescriptor.xcworkspacePath, graph)
     }
