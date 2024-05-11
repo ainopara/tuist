@@ -219,7 +219,7 @@ public extension Subspec {
     }
 
     func mergeSubspecs(subspecNames: [String]?) -> Subspec {
-        var mergedSubspec = Subspec()
+        let mergedSubspec = Subspec()
         mergedSubspec.merge(self)
         let includeSubspecNames = subspecNames ?? (self.subspecs ?? []).compactMap(\.name)
         for subsubspec in self.subspecs ?? [] where includeSubspecNames.contains(subsubspec.name!) {
