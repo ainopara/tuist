@@ -74,7 +74,7 @@ public struct SourceFileGlob: Codable, Equatable {
             compilerFlags: compilerFlags,
             codeGen: codeGen,
             compilationCondition: compilationCondition,
-            isSingleFile: false
+            isSingleFile: true
         )
     }
 }

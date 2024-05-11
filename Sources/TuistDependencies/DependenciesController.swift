@@ -263,7 +263,7 @@ public final class DependenciesController: DependenciesControlling {
             )
             dependenciesGraph = try dependenciesGraph.merging(with: cocoaPodDependenciesGraph)
         } else {
-            try swiftPackageManagerInteractor.clean(dependenciesDirectory: dependenciesDirectory)
+            try cocoaPodInteractor.clean(dependenciesDirectory: dependenciesDirectory)
         }
 
         return dependenciesGraph
