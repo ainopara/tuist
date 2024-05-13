@@ -72,7 +72,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         try saveDependencies(pathsProvider: pathsProvider)
 
         // Generate graph
-        let specs = try readSpecs(pathsProvider: pathsProvider)
+        let specs = try fetchSpecs(pods: dependencies.pods, pathsProvider: pathsProvider)
 
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
@@ -469,12 +469,48 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         return (externalProjects, externalDependencies)
     }
 
-    fileprivate func readSpecs(pathsProvider: CocoaPodsPathsProvider) throws -> [Podspec] {
-        let specsDirectory = pathsProvider.destinationPodsDirectory.appending(component: "Podspecs")
-        let files = try localFileSystem.getDirectoryContents(specsDirectory)
+    // MARK: - Fetch Podspecs
+
+    private func fetchSpecs(pods: [CocoaPodsDependencies.Pod], pathsProvider: CocoaPodsPathsProvider) throws -> [Podspec] {
         
+        let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
+        try localFileSystem.removeFileTree(specsDirectory)
+        try localFileSystem.createDirectory(specsDirectory)
+
+        let savedCWD = localFileSystem.currentWorkingDirectory
+        try localFileSystem.changeCurrentWorkingDirectory(to: specsDirectory)
+
+        for pod in pods {
+            switch pod {
+            case .remote(let name, let source, _, _, _):
+                switch source {
+                case .version(let version):
+                    try dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version)
+                case .podspec(let path):
+                    try dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
+                case .gitWithTag(let source, let tag):
+                    logger.warning("Skipping fetch spec for \(source) \(tag)")
+                    break
+//                    dealWithSourceGit(name: name, source: source, checkoutName: tag)
+                case .gitWithCommit(let source, let commit):
+                    logger.warning("Skipping fetch spec for \(source) \(commit)")
+                    break
+//                    dealWithSourceGit(name: name, source: source, checkoutName: commit, isCommit: true)
+                case .gitWithBranch(let source, let branch):
+                    logger.warning("Skipping fetch spec for \(source) \(branch)")
+                    break
+//                    dealWithSourceGit(name: name, source: source, checkoutName: branch)
+                }
+            }
+        }
+
+        if let savedCWD {
+            try localFileSystem.changeCurrentWorkingDirectory(to: savedCWD)
+        }
+
+        let files = try localFileSystem.getDirectoryContents(specsDirectory)
         var results: [Podspec] = []
-        for file in files {
+        for file in files where file.hasSuffix(".json") {
             let fileContent = try localFileSystem.readFileContents(specsDirectory.appending(component: file))
             try fileContent.withData { data in
                 let podspec = try JSONDecoder().decode(Podspec.self, from: data)
@@ -482,6 +518,83 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
         return results
+    }
+
+    private func dealWithSourceVersion(pathsProvider: CocoaPodsPathsProvider, name: String, version: String) throws {
+
+        func findSpecInSource(sourceName: String, isCDN: Bool) throws -> [AbsolutePath] {
+            if isCDN {
+                let specFolderPath = try AbsolutePath(validating: NSHomeDirectory() + "/.cocoapods/repos/\(sourceName)/Specs")
+                let prefixPath = name.md5.prefix(3).map(String.init).joined(separator: "/")
+                let jsonSpecPath = specFolderPath.appending(try RelativePath(validating: "\(prefixPath)/\(name)/\(version)/\(name).podspec.json"))
+                let specPath = specFolderPath.appending(try RelativePath(validating: "\(prefixPath)/\(name)/\(version)/\(name).podspec"))
+                return [jsonSpecPath, specPath]
+            } else {
+                let specFolderPath = try AbsolutePath(validating: NSHomeDirectory() + "/.cocoapods/repos/\(sourceName)")
+                let jsonSpecPath = try specFolderPath.appending(RelativePath(validating: "\(name)/\(version)/\(name).podspec.json"))
+                let specPath = try specFolderPath.appending(RelativePath(validating: "\(name)/\(version)/\(name).podspec"))
+                return [jsonSpecPath, specPath]
+            }
+        }
+
+        let sources = [
+            ("zhenguanyu-cdn", true),
+            ("zhenguanyu-ios-specs", false)
+        ]
+
+        var specPathCandidates: [AbsolutePath] = []
+        for source in sources {
+            let paths = try findSpecInSource(sourceName: source.0, isCDN: source.1)
+            specPathCandidates += paths
+        }
+
+        guard let specPath = specPathCandidates.first(where: { localFileSystem.exists($0) }) else {
+            logger.warning("Cannot find \(name).podspec.json in sources:")
+            for candidate in specPathCandidates {
+                logger.warning("  - \(candidate.pathString)")
+            }
+            return
+        }
+
+        let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
+        try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
+        if specPath.basename.hasSuffix(".podspec") {
+            let result = try System.shared.capture(["bundle", "exec", "pod", "ipc", "spec", specPath.basename])
+            let resultData = result.data(using: .utf8)!
+            try localFileSystem.writeFileContents(
+                specsDirectory.appending(component: specPath.basename + ".json"),
+                bytes: ByteString(resultData),
+                atomically: true
+            )
+        }
+    }
+
+    private func dealWithSourcePodspec(pathsProvider: CocoaPodsPathsProvider, name: String, path: String) throws {
+        let projectRootPath = pathsProvider.dependenciesDirectory.parentDirectory.parentDirectory
+        let specOrFolderPath = try projectRootPath.appending(RelativePath(validating: path))
+        var specPath = specOrFolderPath
+        if localFileSystem.isDirectory(specOrFolderPath) {
+            specPath = specOrFolderPath.appending(component: "\(name).podspec.json")
+            if !localFileSystem.exists(specPath) {
+                specPath = specOrFolderPath.appending(component: "\(name).podspec")
+            }
+        }
+        guard localFileSystem.exists(specPath) else {
+            logger.warning("Cannot find \(name).podspec.json or \(name).podspec in \(path)")
+            return
+        }
+
+        let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
+        try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
+        if specPath.basename.hasSuffix(".podspec") {
+            let result = try System.shared.capture(["bundle", "exec", "pod", "ipc", "spec", specPath.basename])
+            let resultData = result.data(using: .utf8)!
+            try localFileSystem.writeFileContents(
+                specsDirectory.appending(component: specPath.basename + ".json"),
+                bytes: ByteString(resultData),
+                atomically: true
+            )
+        }
     }
 
     // MARK: - Installation
