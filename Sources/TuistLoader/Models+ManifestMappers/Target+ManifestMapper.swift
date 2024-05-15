@@ -39,13 +39,13 @@ extension TuistGraph.Target {
         let productName = manifest.productName
         let deploymentTargets = manifest.deploymentTargets.map { TuistGraph.DeploymentTargets.from(manifest: $0) } ?? .empty()
 
-        let dependencies = try manifest.dependencies.flatMap {
+        let dependencies = try Array(Set(manifest.dependencies.flatMap {
             try TuistGraph.TargetDependency.from(
                 manifest: $0,
                 generatorPaths: generatorPaths,
                 externalDependencies: externalDependencies
             )
-        }
+        }))
 
         let infoPlist = try TuistGraph.InfoPlist.from(manifest: manifest.infoPlist, generatorPaths: generatorPaths)
 

@@ -233,11 +233,14 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     product: .bundle,
                     productName: key,
                     bundleId: "org.cocoapods.\(spec.name).bundle.\(key)".replacingOccurrences(of: "_", with: "-"),
+                    deploymentTargets: .iOS("12.0"),
                     resources: ResourceFileElements(
                         resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map {
-                            logger.debug("Resource file: \($0)")
-                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".lproj") {
-                                return .folderReference(path: Path($0))
+                            logger.info("Resource file: \($0)")
+                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && ($0.hasSuffix(".lproj/") || $0.hasSuffix(".xcassets/")) {
+                                return .glob(pattern: Path(String($0.dropLast())))
+                            } else if $0.hasSuffix("/") {
+                                return .glob(pattern: Path($0 + "**"))
                             } else {
                                 return .glob(pattern: Path($0))
                             }
@@ -258,8 +261,11 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     bundleId: "org.cocoapods.\(spec.name).bundle".replacingOccurrences(of: "_", with: "-"),
                     resources: ResourceFileElements(
                         resources: notBundleFiles.map {
-                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".lproj") {
-                                return .folderReference(path: Path($0))
+                            logger.info("Resource file: \($0)")
+                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && ($0.hasSuffix(".lproj/") || $0.hasSuffix(".xcassets/")) {
+                                return .glob(pattern: Path(String($0.dropLast())))
+                            } else if $0.hasSuffix("/") {
+                                return .glob(pattern: Path($0 + "**"))
                             } else {
                                 return .glob(pattern: Path($0))
                             }
@@ -521,7 +527,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                return result
+                return Array(Set(result))
             }()
 
             // MARK: - Target

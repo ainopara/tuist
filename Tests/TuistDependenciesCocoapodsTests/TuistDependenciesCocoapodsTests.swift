@@ -83,7 +83,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         """
         let spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -98,7 +98,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         XCTAssertNoDifference(spec.resources, ["TYRZResource.bundle"])
         XCTAssertNoDifference(spec.podTargetXcconfig?["OTHER_LDFLAGS"]?.wrappedValue, ["-ObjC"])
         XCTAssertNoDifference(spec.weakFrameworks, ["Network"])
-        XCTAssertNoDifference(project, [:])
+        XCTAssertNoDifference(projects, [:])
         XCTAssertNoDifference(
             dependencies,
             [
@@ -149,7 +149,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
         
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -162,7 +162,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         XCTAssertNoDifference(spec.platforms?.ios, "9.0")
         XCTAssertNoDifference(spec.vendoredFrameworks, ["VGODataEncryptor/VGODataEncryptor.xcframework"])
         XCTAssertNoDifference(spec.libraries, ["c++"])
-        XCTAssertNoDifference(project, [:])
+        XCTAssertNoDifference(projects, [:])
         XCTAssertNoDifference(
             dependencies,
             [
@@ -181,6 +181,107 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
                 ]
             ]
         )
+    }
+
+    func testPodspecParsingTensorFlowLiteSwift() throws {
+        let specJSON = """
+        {
+          "name": "TensorFlowLiteSwift",
+          "version": "2.7.0",
+          "authors": "Google Inc.",
+          "license": {
+            "type": "Apache"
+          },
+          "homepage": "https://github.com/tensorflow/tensorflow",
+          "source": {
+            "git": "https://github.com/tensorflow/tensorflow.git",
+            "tag": "v2.7.0"
+          },
+          "summary": "TensorFlow Lite for Swift",
+          "description": "TensorFlow Lite is TensorFlow's lightweight solution for Swift developers. It\nenables low-latency inference of on-device machine learning models with a\nsmall binary size and fast performance supporting hardware acceleration.",
+          "platforms": {
+            "ios": "9.0"
+          },
+          "module_name": "TensorFlowLite",
+          "static_framework": true,
+          "default_subspecs": "Core",
+          "subspecs": [
+            {
+              "name": "Core",
+              "dependencies": {
+                "TensorFlowLiteC": [
+                  "2.7.0"
+                ]
+              },
+              "source_files": "tensorflow/lite/swift/Sources/*.swift",
+              "exclude_files": "tensorflow/lite/swift/Sources/{CoreML,Metal}Delegate.swift",
+              "testspecs": [
+                {
+                  "name": "Tests",
+                  "test_type": "unit",
+                  "source_files": "tensorflow/lite/swift/Tests/*.swift",
+                  "exclude_files": "tensorflow/lite/swift/Tests/MetalDelegateTests.swift",
+                  "resources": [
+                    "tensorflow/lite/testdata/add.bin",
+                    "tensorflow/lite/testdata/add_quantized.bin"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "CoreML",
+              "source_files": "tensorflow/lite/swift/Sources/CoreMLDelegate.swift",
+              "dependencies": {
+                "TensorFlowLiteC/CoreML": [
+                  "2.7.0"
+                ],
+                "TensorFlowLiteSwift/Core": [
+                  "2.7.0"
+                ]
+              }
+            },
+            {
+              "name": "Metal",
+              "source_files": "tensorflow/lite/swift/Sources/MetalDelegate.swift",
+              "dependencies": {
+                "TensorFlowLiteC/Metal": [
+                  "2.7.0"
+                ],
+                "TensorFlowLiteSwift/Core": [
+                  "2.7.0"
+                ]
+              },
+              "testspecs": [
+                {
+                  "name": "Tests",
+                  "test_type": "unit",
+                  "source_files": "tensorflow/lite/swift/Tests/{Interpreter,MetalDelegate}Tests.swift",
+                  "resources": [
+                    "tensorflow/lite/testdata/add.bin",
+                    "tensorflow/lite/testdata/add_quantized.bin",
+                    "tensorflow/lite/testdata/multi_add.bin"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: ["CoreML", "Metal"])
+
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+        )
+
+        XCTAssertNoDifference(spec.name, "TensorFlowLiteSwift")
+        XCTAssertNoDifference(projects.values.first!.targets.first!.dependencies, [
+            .external(name: "TensorFlowLiteC", condition: nil)
+        ])
     }
 
     func testPodspecParsingTensorFlowLiteC() throws {
@@ -235,7 +336,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -252,7 +353,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         XCTAssertNoDifference(spec.libraries, ["c++"])
         XCTAssertNoDifference(spec.defaultSubspecs, ["Core"])
 
-        XCTAssertNoDifference(project, [:])
+        XCTAssertNoDifference(projects, [:])
         XCTAssertNoDifference(
             dependencies,
             [
@@ -472,7 +573,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: ["Core", "HybridSDK"])
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -551,7 +652,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: ["Core", "Swift"])
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -661,7 +762,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "aes/AESCrypt.cpp"
         ]))
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -669,7 +770,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
         )
 
-        let headers = project.values.first!.targets[0].headers
+        let headers = projects.values.first!.targets[0].headers
 
         XCTAssertNoDifference(headers!.public!.globs.map(\.glob.pathString).sorted(), [
             "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMBuffer.h",
@@ -771,7 +872,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -779,7 +880,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
         )
 
-        XCTAssertNoDifference(project, [:])
+        XCTAssertNoDifference(projects, [:])
 
         XCTAssertNoDifference(dependencies, [
             "OpenSSL-Private": [
@@ -921,7 +1022,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -929,7 +1030,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
         )
 
-        let headers = project.values.first!.targets[0].headers
+        let headers = projects.values.first!.targets[0].headers
 
         XCTAssertNoDifference(headers!.public!.globs.map(\.glob.pathString).sorted(), [
             "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFCompatibilityMacros.h",
@@ -1015,7 +1116,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
@@ -1127,7 +1228,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
 
-        let (project, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
             for: spec,
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
