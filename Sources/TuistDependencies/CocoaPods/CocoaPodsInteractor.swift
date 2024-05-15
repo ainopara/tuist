@@ -71,8 +71,10 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         try saveDependencies(pathsProvider: pathsProvider)
 
-        // Generate graph
+        logger.info("Fetching CocoaPods specs.", metadata: .subsection)
         let specs = try fetchSpecs(pods: dependencies.pods, pathsProvider: pathsProvider)
+
+        logger.info("Generating dependencies graph.", metadata: .subsection)
 
         var externalProjects: [Path: ProjectDescription.Project] = [:]
         var externalDependencies: [String: [ProjectDescription.TargetDependency]] = [:]
@@ -164,8 +166,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         return Array(sources)
     }
 
-    func filterSources(_ sources: [String], hasExtensionIn extensions: [String]) -> [String] {
-        sources
+    func filterFiles(_ files: [String], hasExtensionIn extensions: [String]) -> [String] {
+        files
             .filter { path in
                 let ext = (path as NSString).pathExtension
                 guard !ext.isEmpty else { return false }
@@ -174,10 +176,101 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
     }
 
+    func filterFiles(_ files: [String], notHasExtensionIn extensions: [String]) -> [String] {
+        files
+            .filter { path in
+                let ext = (path as NSString).pathExtension
+                guard !ext.isEmpty else { return true }
+                return !extensions
+                    .contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
+            }
+    }
+
     func isSource(_ source: String, hasExtensionIn extensions: [String]) -> Bool {
         let ext = (source as NSString).pathExtension
         guard !ext.isEmpty else { return false }
         return extensions.contains(where: { $0.caseInsensitiveCompare(ext) == .orderedSame })
+    }
+
+    func buildBundleTarget(
+        for spec: Podspec,
+        manifestPath: Path,
+        descriptionConfigurations: [ProjectDescription.Configuration]
+    ) -> ([ProjectDescription.Target], [ProjectDescription.TargetDependency]) {
+        
+        let resourceFiles = resolveGlobs(manifestPath: manifestPath, globs: spec.resources ?? [])
+        let bundleFiles = filterFiles(resourceFiles, hasExtensionIn: ["bundle"])
+        let notBundleFiles = filterFiles(resourceFiles, notHasExtensionIn: ["bundle"])
+        
+        let dependencies: [ProjectDescription.TargetDependency] = bundleFiles.map { .bundle(path: Path($0)) }
+        var bundleTargets: [ProjectDescription.Target] = []
+
+        let bundleTargetSettings: ProjectDescription.Settings = .settings(configurations: descriptionConfigurations.map {
+            switch $0.variant {
+            case .debug:
+                return .debug(name: $0.name, settings: [
+                    "EXPANDED_CODE_SIGN_IDENTITY": "",
+                    "CODE_SIGNING_REQUIRED": "NO",
+                    "CODE_SIGNING_ALLOWED": "NO"
+                ])
+            case .release:
+                return .release(name: $0.name, settings: [
+                    "EXPANDED_CODE_SIGN_IDENTITY": "",
+                    "CODE_SIGNING_REQUIRED": "NO",
+                    "CODE_SIGNING_ALLOWED": "NO"
+                ])
+            }
+        })
+
+        // MARK: - Resource Bundles
+
+        let resourceBundles = spec.resourceBundles ?? [:]
+        for (key, globs) in resourceBundles {
+            bundleTargets.append(
+                Target(
+                    name: "\(spec.name)-\(key)",
+                    destinations: .iOS,
+                    product: .bundle,
+                    productName: key,
+                    bundleId: "org.cocoapods.\(spec.name).bundle.\(key)".replacingOccurrences(of: "_", with: "-"),
+                    resources: ResourceFileElements(
+                        resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map {
+                            logger.debug("Resource file: \($0)")
+                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".lproj") {
+                                return .folderReference(path: Path($0))
+                            } else {
+                                return .glob(pattern: Path($0))
+                            }
+                        }
+                    ),
+                    settings: bundleTargetSettings
+                )
+            )
+        }
+
+        if !notBundleFiles.isEmpty {
+            bundleTargets.append(
+                Target(
+                    name: "\(spec.name)-\(spec.name)_resource",
+                    destinations: .iOS,
+                    product: .bundle,
+                    productName: spec.name + "_resource",
+                    bundleId: "org.cocoapods.\(spec.name).bundle".replacingOccurrences(of: "_", with: "-"),
+                    resources: ResourceFileElements(
+                        resources: notBundleFiles.map {
+                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".lproj") {
+                                return .folderReference(path: Path($0))
+                            } else {
+                                return .glob(pattern: Path($0))
+                            }
+                        }
+                    ),
+                    settings: bundleTargetSettings
+                )
+            )
+        }
+
+        return (bundleTargets, dependencies)
     }
 
     func generateProjectDescription(
@@ -196,7 +289,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             Podspec.expandToValidGlob(from: cocoaPodsGlob)
         }
         let sources = resolveGlobs(manifestPath: manifestPath, globs: sourceGlobs)
-        let validSources = filterSources(sources, hasExtensionIn: Target.validSourceExtensions)
+        let validSources = filterFiles(sources, hasExtensionIn: Target.validSourceExtensions)
 
         let noSource = validSources.isEmpty
         let hasVendoredFramework = !(spec.vendoredFrameworks ?? []).isEmpty
@@ -221,6 +314,31 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             result += (spec.weakFrameworks ?? []).map {
                 .sdk(name: $0, type: .framework, status: .optional, condition: nil)
+            }
+
+            let (bundleTargets, resourceDependencies) = buildBundleTarget(
+                for: spec,
+                manifestPath: manifestPath,
+                descriptionConfigurations: descriptionConfigurations
+            )
+
+            result += resourceDependencies
+
+            if !bundleTargets.isEmpty {
+                externalProjects[manifestPath] =  ProjectDescription.Project(
+                    name: spec.name,
+                    settings: .settings(configurations: descriptionConfigurations.map {
+                        switch $0.variant {
+                        case .debug:
+                            return .debug(name: $0.name)
+                        case .release:
+                            return .release(name: $0.name)
+                        }
+                    }),
+                    targets: bundleTargets,
+                    resourceSynthesizers: [.plists()]
+                )
+                result += bundleTargets.map { .project(target: $0.name, path: manifestPath, condition: nil) }
             }
 
             if spec.headerDir != nil {
@@ -318,7 +436,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             let privateHeaderGlobs: [String] = spec.privateHeaderFiles ?? []
             var privateHeaders = resolveGlobs(manifestPath: manifestPath, globs: privateHeaderGlobs)
-            privateHeaders = filterSources(privateHeaders, hasExtensionIn: ["h", "hpp"])
+            privateHeaders = filterFiles(privateHeaders, hasExtensionIn: ["h", "hpp"])
 
             let publicHeaderGlobs: [String] = {
                 var result: [String] = []
@@ -337,9 +455,9 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }()
             var publicHeaders: [String] = resolveGlobs(manifestPath: manifestPath, globs: publicHeaderGlobs)
                 .filter { !privateHeaders.contains($0) }
-            publicHeaders = filterSources(publicHeaders, hasExtensionIn: ["h", "hpp"])
+            publicHeaders = filterFiles(publicHeaders, hasExtensionIn: ["h", "hpp"])
 
-            var projectHeaders = filterSources(sources, hasExtensionIn: ["h", "hpp"])
+            var projectHeaders = filterFiles(sources, hasExtensionIn: ["h", "hpp"])
                 .filter { !privateHeaders.contains($0) && !publicHeaders.contains($0) }
 
             var copyFileActions: [ProjectDescription.CopyFilesAction] = []
@@ -408,6 +526,56 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             // MARK: - Target
 
+            let (bundleTargets, bundleDependencies) = buildBundleTarget(
+                for: spec,
+                manifestPath: manifestPath,
+                descriptionConfigurations: descriptionConfigurations
+            )
+
+            var targets: [ProjectDescription.Target] = [
+                Target(
+                    name: spec.name,
+                    destinations: .iOS,
+                    product: .staticFramework,
+                    productName: validSources.isEmpty ? (spec.name + "Aggregate") : (spec.moduleName ?? spec.headerDir),
+                    bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
+                    deploymentTargets: .iOS("12.0"),
+                    infoPlist: .default,
+                    sources: {
+                        if !validSources.isEmpty {
+                            return ProjectDescription.SourceFilesList(
+                                globs: validSources.map {
+                                    ProjectDescription.SourceFileGlob.file(
+                                        Path($0),
+                                        compilerFlags: compilerFlags(for: $0).joined(separator: " ")
+                                    )
+                                }
+                            )
+                        } else {
+                            return nil
+                        }
+                    }(),
+                    copyFiles: copyFileActions,
+                    headers: {
+                        return ProjectDescription.Headers.headers(
+                            public: FileList.list(
+                                publicHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
+                            ),
+                            private: FileList.list(
+                                privateHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
+                            ),
+                            project: FileList.list(
+                                projectHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
+                            )
+                        )
+                    }(),
+                    dependencies: depenencies + bundleTargets.map { .target(name: $0.name) } + bundleDependencies,
+                    settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations)
+                )
+            ]
+
+            targets += bundleTargets
+
             externalProjects[manifestPath] = ProjectDescription.Project(
                 name: spec.name,
                 settings: .settings(configurations: descriptionConfigurations.map {
@@ -418,47 +586,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         return .release(name: $0.name)
                     }
                 }),
-                targets: [
-                    Target(
-                        name: spec.name,
-                        destinations: .iOS,
-                        product: .staticFramework,
-                        productName: validSources.isEmpty ? (spec.name + "Aggregate") : (spec.moduleName ?? spec.headerDir),
-                        bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
-                        deploymentTargets: .iOS("12.0"),
-                        infoPlist: .default,
-                        sources: {
-                            if !validSources.isEmpty {
-                                return ProjectDescription.SourceFilesList(
-                                    globs: validSources.map {
-                                        ProjectDescription.SourceFileGlob.file(
-                                            Path($0),
-                                            compilerFlags: compilerFlags(for: $0).joined(separator: " ")
-                                        )
-                                    }
-                                )
-                            } else {
-                                return nil
-                            }
-                        }(),
-                        copyFiles: copyFileActions,
-                        headers: {
-                            return ProjectDescription.Headers.headers(
-                                public: FileList.list(
-                                    publicHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
-                                ),
-                                private: FileList.list(
-                                    privateHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
-                                ),
-                                project: FileList.list(
-                                    projectHeaders.map { ProjectDescription.FileListGlob.file(Path($0)) }
-                                )
-                            )
-                        }(),
-                        dependencies: depenencies,
-                        settings: .settings(base: descriptionBaseSettings, configurations: specSpecificConfigurations)
-                    )
-                ],
+                targets: targets,
                 resourceSynthesizers: [.plists()]
             )
             externalDependencies[spec.name] = [
@@ -489,17 +617,11 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 case .podspec(let path):
                     try dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
                 case .gitWithTag(let source, let tag):
-                    logger.warning("Skipping fetch spec for \(source) \(tag)")
-                    break
-//                    dealWithSourceGit(name: name, source: source, checkoutName: tag)
+                    logger.warning("Skipping unsupported fetch for \(source) \(tag)")
                 case .gitWithCommit(let source, let commit):
-                    logger.warning("Skipping fetch spec for \(source) \(commit)")
-                    break
-//                    dealWithSourceGit(name: name, source: source, checkoutName: commit, isCommit: true)
+                    logger.warning("Skipping unsupported fetch for \(source) \(commit)")
                 case .gitWithBranch(let source, let branch):
-                    logger.warning("Skipping fetch spec for \(source) \(branch)")
-                    break
-//                    dealWithSourceGit(name: name, source: source, checkoutName: branch)
+                    logger.warning("Skipping unsupported fetch for \(source) \(branch)")
                 }
             }
         }
@@ -559,7 +681,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
         try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
         if specPath.basename.hasSuffix(".podspec") {
-            let result = try System.shared.capture(["bundle", "exec", "pod", "ipc", "spec", specPath.basename])
+            let bundlePath = ("~/.rbenv/shims/bundle" as NSString).expandingTildeInPath
+            let result = try System.shared.capture([bundlePath, "exec", "pod", "ipc", "spec", specPath.basename])
             let resultData = result.data(using: .utf8)!
             try localFileSystem.writeFileContents(
                 specsDirectory.appending(component: specPath.basename + ".json"),
@@ -587,7 +710,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
         try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
         if specPath.basename.hasSuffix(".podspec") {
-            let result = try System.shared.capture(["bundle", "exec", "pod", "ipc", "spec", specPath.basename])
+            let bundlePath = ("~/.rbenv/shims/bundle" as NSString).expandingTildeInPath
+            let result = try System.shared.capture([bundlePath, "exec", "pod", "ipc", "spec", specPath.basename])
             let resultData = result.data(using: .utf8)!
             try localFileSystem.writeFileContents(
                 specsDirectory.appending(component: specPath.basename + ".json"),
