@@ -19,7 +19,7 @@ public protocol CocoaPodsInteracting {
         dependencies: TuistGraph.CocoaPodsDependencies,
         platforms: Set<TuistGraph.PackagePlatform>,
         shouldUpdate: Bool
-    ) throws -> TuistCore.DependenciesGraph
+    ) async throws -> TuistCore.DependenciesGraph
 
     /// Removes all cached `Cocoapod` dependencies.
     /// - Parameter dependenciesDirectory: The path to the directory that contains the `Tuist/Dependencies/` directory.
@@ -45,7 +45,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         dependencies: TuistGraph.CocoaPodsDependencies,
         platforms: Set<TuistGraph.PackagePlatform>,
         shouldUpdate: Bool
-    ) throws -> TuistCore.DependenciesGraph {
+    ) async throws -> TuistCore.DependenciesGraph {
         logger.info("Installing CocoaPods dependencies.", metadata: .subsection)
 
         let pathsProvider = CocoaPodsPathsProvider(dependenciesDirectory: dependenciesDirectory)
@@ -59,7 +59,12 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
 
+        logger.info("Fetching CocoaPods specs.", metadata: .subsection)
+        let specs = try await fetchSpecs(pods: dependencies.pods, sources: dependencies.sources, pathsProvider: pathsProvider)
+
+        logger.info("Generating PodsHolder Project.", metadata: .subsection)
         try generateProjectSwiftFile(pathsProvider: pathsProvider)
+        logger.info("Generating Podfile.", metadata: .subsection)
         try generatePodfile(pathsProvider: pathsProvider, dependencies: dependencies, platforms: platforms)
         try loadDependencies(pathsProvider: pathsProvider, dependencies: dependencies)
 
@@ -70,9 +75,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         try saveDependencies(pathsProvider: pathsProvider)
-
-        logger.info("Fetching CocoaPods specs.", metadata: .subsection)
-        let specs = try fetchSpecs(pods: dependencies.pods, pathsProvider: pathsProvider)
 
         logger.info("Generating dependencies graph.", metadata: .subsection)
 
@@ -236,7 +238,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     deploymentTargets: .iOS("12.0"),
                     resources: ResourceFileElements(
                         resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map {
-                            logger.info("Resource file: \($0)")
                             if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && ($0.hasSuffix(".lproj/") || $0.hasSuffix(".xcassets/")) {
                                 return .glob(pattern: Path(String($0.dropLast())))
                             } else if $0.hasSuffix("/") {
@@ -261,7 +262,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     bundleId: "org.cocoapods.\(spec.name).bundle".replacingOccurrences(of: "_", with: "-"),
                     resources: ResourceFileElements(
                         resources: notBundleFiles.map {
-                            logger.info("Resource file: \($0)")
                             if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && ($0.hasSuffix(".lproj/") || $0.hasSuffix(".xcassets/")) {
                                 return .glob(pattern: Path(String($0.dropLast())))
                             } else if $0.hasSuffix("/") {
@@ -605,8 +605,12 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
     // MARK: - Fetch Podspecs
 
-    private func fetchSpecs(pods: [CocoaPodsDependencies.Pod], pathsProvider: CocoaPodsPathsProvider) throws -> [Podspec] {
-        
+    private func fetchSpecs(
+        pods: [CocoaPodsDependencies.Pod],
+        sources: [CocoaPodsDependencies.PodSpecSource],
+        pathsProvider: CocoaPodsPathsProvider
+    ) async throws -> [Podspec] {
+
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
         try localFileSystem.removeFileTree(specsDirectory)
         try localFileSystem.createDirectory(specsDirectory)
@@ -614,20 +618,14 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let savedCWD = localFileSystem.currentWorkingDirectory
         try localFileSystem.changeCurrentWorkingDirectory(to: specsDirectory)
 
-        for pod in pods {
+        _ = try await pods.concurrentMap { pod in
             switch pod {
             case .remote(let name, let source, _, _, _):
                 switch source {
                 case .version(let version):
-                    try dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version)
+                    try self.dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version, sources: sources)
                 case .podspec(let path):
-                    try dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
-                case .gitWithTag(let source, let tag):
-                    logger.warning("Skipping unsupported fetch for \(source) \(tag)")
-                case .gitWithCommit(let source, let commit):
-                    logger.warning("Skipping unsupported fetch for \(source) \(commit)")
-                case .gitWithBranch(let source, let branch):
-                    logger.warning("Skipping unsupported fetch for \(source) \(branch)")
+                    try self.dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
                 }
             }
         }
@@ -648,7 +646,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         return results
     }
 
-    private func dealWithSourceVersion(pathsProvider: CocoaPodsPathsProvider, name: String, version: String) throws {
+    private func dealWithSourceVersion(pathsProvider: CocoaPodsPathsProvider, name: String, version: String, sources: [CocoaPodsDependencies.PodSpecSource]) throws {
 
         func findSpecInSource(sourceName: String, isCDN: Bool) throws -> [AbsolutePath] {
             if isCDN {
@@ -665,14 +663,9 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
 
-        let sources = [
-            ("zhenguanyu-cdn", true),
-            ("zhenguanyu-ios-specs", false)
-        ]
-
         var specPathCandidates: [AbsolutePath] = []
         for source in sources {
-            let paths = try findSpecInSource(sourceName: source.0, isCDN: source.1)
+            let paths = try findSpecInSource(sourceName: source.name, isCDN: source.isCDN)
             specPathCandidates += paths
         }
 
@@ -775,12 +768,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         var podfile = """
         install! 'cocoapods', :warn_for_unused_master_specs_repo => false
 
-        source 'ssh://gerrit.zhenguanyu.com:29418/ios-specs'
-        source 'http://cocoapods.zhenguanyu.com/cdn/'
-
         platform :ios, '12.0'
-
-        plugin 'cocoapods-show-podpsecs-in-project'
 
         inhibit_all_warnings!
         use_modular_headers!
@@ -792,22 +780,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         for dependency in dependencies.pods {
             switch dependency {
-            case .remote(let name, let source, let subspecs, let generateModularHeaders, _):
-                podfile += "  pod '\(name)', "
-
-                switch source {
-                case .version(let version):
-                    podfile += "'\(version)'"
-                case .podspec(let path):
-                    podfile += ":podspec => '../../../\(path)'"
-                case .gitWithTag(let source, let tag):
-                    podfile += ":git => '\(source)', :tag => '\(tag)'"
-                case .gitWithCommit(let source, let commit):
-                    podfile += ":git => '\(source)', :commit => '\(commit)'"
-                case .gitWithBranch(let source, let branch):
-                    podfile += ":git => '\(source)', :branch => '\(branch)'"
-                }
-
+            case .remote(let name, _, let subspecs, let generateModularHeaders, _):
+                podfile += "  pod '\(name)', :podspec => 'Podspecs/\(name).podspec.json'"
                 if let subspecs {
                     let quoted = subspecs.map { "'\($0)'" }
                     podfile += ", :subspecs => [\(quoted.joined(separator: ", "))]"

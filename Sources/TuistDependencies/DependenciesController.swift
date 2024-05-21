@@ -63,7 +63,7 @@ public protocol DependenciesControlling {
         at path: AbsolutePath,
         dependencies: TuistGraph.Dependencies,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph
+    ) async throws -> TuistCore.DependenciesGraph
 
     /// Fetches dependencies.
     /// - Parameter path: Directory where project's dependencies will be fetched.
@@ -73,7 +73,7 @@ public protocol DependenciesControlling {
         at path: AbsolutePath,
         packageSettings: TuistGraph.PackageSettings,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph
+    ) async throws -> TuistCore.DependenciesGraph
 
     /// Updates dependencies.
     /// - Parameters:
@@ -84,7 +84,7 @@ public protocol DependenciesControlling {
         at path: AbsolutePath,
         dependencies: TuistGraph.Dependencies,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph
+    ) async throws -> TuistCore.DependenciesGraph
 
     /// Updates dependencies.
     /// - Parameters:
@@ -95,7 +95,7 @@ public protocol DependenciesControlling {
         at path: AbsolutePath,
         packageSettings: TuistGraph.PackageSettings,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph
+    ) async throws -> TuistCore.DependenciesGraph
 
     /// Save dependencies graph.
     /// - Parameters:
@@ -131,8 +131,8 @@ public final class DependenciesController: DependenciesControlling {
         at path: AbsolutePath,
         dependencies: TuistGraph.Dependencies,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph {
-        try install(
+    ) async throws -> TuistCore.DependenciesGraph {
+        try await install(
             at: path,
             dependencies: dependencies,
             shouldUpdate: false,
@@ -144,8 +144,8 @@ public final class DependenciesController: DependenciesControlling {
         at path: AbsolutePath,
         packageSettings: TuistGraph.PackageSettings,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph {
-        try install(
+    ) async throws -> TuistCore.DependenciesGraph {
+        try await install(
             at: path,
             dependencies: TuistGraph.Dependencies(
                 carthage: nil,
@@ -169,8 +169,8 @@ public final class DependenciesController: DependenciesControlling {
         at path: AbsolutePath,
         packageSettings: TuistGraph.PackageSettings,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph {
-        try install(
+    ) async throws -> TuistCore.DependenciesGraph {
+        try await install(
             at: path,
             dependencies: TuistGraph.Dependencies(
                 carthage: nil,
@@ -194,8 +194,8 @@ public final class DependenciesController: DependenciesControlling {
         at path: AbsolutePath,
         dependencies: TuistGraph.Dependencies,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph {
-        try install(
+    ) async throws -> TuistCore.DependenciesGraph {
+        try await install(
             at: path,
             dependencies: dependencies,
             shouldUpdate: true,
@@ -217,7 +217,7 @@ public final class DependenciesController: DependenciesControlling {
         dependencies: TuistGraph.Dependencies,
         shouldUpdate: Bool,
         swiftVersion: TSCUtility.Version?
-    ) throws -> TuistCore.DependenciesGraph {
+    ) async throws -> TuistCore.DependenciesGraph {
         let dependenciesDirectory = path
             .appending(component: Constants.tuistDirectoryName)
             .appending(component: Constants.DependenciesDirectory.name)
@@ -255,7 +255,7 @@ public final class DependenciesController: DependenciesControlling {
         }
 
         if let cocoaPodDependencies = dependencies.cocoaPods {
-            let cocoaPodDependenciesGraph = try cocoaPodInteractor.install(
+            let cocoaPodDependenciesGraph = try await cocoaPodInteractor.install(
                 dependenciesDirectory: dependenciesDirectory,
                 dependencies: cocoaPodDependencies,
                 platforms: platforms,

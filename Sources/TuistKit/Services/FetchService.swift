@@ -90,7 +90,7 @@ final class FetchService {
         return plugins
     }
 
-    private func fetchDependencies(path: AbsolutePath, update: Bool, with plugins: TuistGraph.Plugins) throws {
+    private func fetchDependencies(path: AbsolutePath, update: Bool, with plugins: TuistGraph.Plugins) async throws {
         try manifestLoader.validateHasProjectOrWorkspaceManifest(at: path)
 
         let dependenciesManifestPath = path.appending(
@@ -120,13 +120,13 @@ final class FetchService {
             let dependencies = try dependenciesModelLoader.loadDependencies(at: path, with: plugins)
 
             if update {
-                dependenciesManifest = try dependenciesController.update(
+                dependenciesManifest = try await dependenciesController.update(
                     at: path,
                     dependencies: dependencies,
                     swiftVersion: swiftVersion
                 )
             } else {
-                dependenciesManifest = try dependenciesController.fetch(
+                dependenciesManifest = try await dependenciesController.fetch(
                     at: path,
                     dependencies: dependencies,
                     swiftVersion: swiftVersion
@@ -137,13 +137,13 @@ final class FetchService {
             let packageSettings = try packageSettingsLoader.loadPackageSettings(at: path, with: plugins)
 
             if update {
-                dependenciesManifest = try dependenciesController.update(
+                dependenciesManifest = try await dependenciesController.update(
                     at: path,
                     packageSettings: packageSettings,
                     swiftVersion: swiftVersion
                 )
             } else {
-                dependenciesManifest = try dependenciesController.fetch(
+                dependenciesManifest = try await dependenciesController.fetch(
                     at: path,
                     packageSettings: packageSettings,
                     swiftVersion: swiftVersion

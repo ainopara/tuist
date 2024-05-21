@@ -2,6 +2,16 @@ import Foundation
 
 public struct CocoaPodsDependencies: Equatable {
 
+    public struct PodSpecSource: Codable, Equatable {
+        public let name: String
+        public let isCDN: Bool
+
+        public init(name: String, isCDN: Bool) {
+            self.name = name
+            self.isCDN = isCDN
+        }
+    }
+
     public enum Pod: Equatable, Codable {
         case remote(
             name: String,
@@ -15,10 +25,9 @@ public struct CocoaPodsDependencies: Equatable {
     public enum PodSource: Codable, Equatable {
         case version(String)
         case podspec(path: String)
-        case gitWithTag(source: String, tag: String)
-        case gitWithCommit(source: String, commit: String)
-        case gitWithBranch(source: String, branch: String)
     }
+
+    public let sources: [PodSpecSource]
 
     public let pods: [Pod]
 
@@ -29,10 +38,12 @@ public struct CocoaPodsDependencies: Equatable {
     public let targetSettings: [String: SettingsDictionary]
 
     public init(
+        sources: [PodSpecSource],
         pods: [Pod],
         baseSettings: Settings,
         targetSettings: [String: SettingsDictionary]
     ) {
+        self.sources = sources
         self.pods = pods
         self.baseSettings = baseSettings
         self.targetSettings = targetSettings

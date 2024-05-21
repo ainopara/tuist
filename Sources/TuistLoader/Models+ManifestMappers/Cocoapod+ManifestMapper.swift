@@ -16,12 +16,19 @@ extension TuistGraph.CocoaPodsDependencies {
         let targetSettings = manifest.targetSettings.mapValues { TuistGraph.SettingsDictionary.from(manifest: $0) }
 
         return .init(
+            sources: manifest.sources.map { manifest in CocoaPodsDependencies.PodSpecSource.from(manifest: manifest) },
             pods: try manifest.pods.map { manifest in
                 return try CocoaPodsDependencies.Pod.from(manifest: manifest)
             },
             baseSettings: baseSettings,
             targetSettings: targetSettings
         )
+    }
+}
+
+extension TuistGraph.CocoaPodsDependencies.PodSpecSource {
+    static func from(manifest: ProjectDescription.PodSpecSource) -> Self {
+        return .init(name: manifest.name, isCDN: manifest.isCDN)
     }
 }
 
@@ -47,12 +54,6 @@ extension TuistGraph.CocoaPodsDependencies.PodSource {
             return .version(version)
         case .podspec(let path):
             return .podspec(path: path)
-        case .gitWithTag(let source, let tag):
-            return .gitWithTag(source: source, tag: tag)
-        case .gitWithCommit(let source, let commit):
-            return .gitWithCommit(source: source, commit: commit)
-        case .gitWithBranch(let source, let branch):
-            return .gitWithBranch(source: source, branch: branch)
         }
     }
 }
