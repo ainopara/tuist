@@ -35,13 +35,12 @@ extension TuistGraph.CocoaPodsDependencies.PodSpecSource {
 extension TuistGraph.CocoaPodsDependencies.Pod {
     static func from(manifest: ProjectDescription.Pod) throws -> Self {
         switch manifest {
-        case .remote(let name, let source, let subspecs, let generateModularHeaders, let configurations):
+        case .remote(let name, let source, let subspecs, let generateModularHeaders):
             return .remote(
                 name: name,
                 source: try CocoaPodsDependencies.PodSource.from(manifest: source),
                 subspecs: subspecs,
-                generateModularHeaders: generateModularHeaders,
-                configurations: configurations
+                generateModularHeaders: generateModularHeaders
             )
         }
     }

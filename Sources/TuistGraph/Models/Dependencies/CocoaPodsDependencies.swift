@@ -17,8 +17,7 @@ public struct CocoaPodsDependencies: Equatable {
             name: String,
             source: PodSource,
             subspecs: [String]?,
-            generateModularHeaders: Bool,
-            configurations: [String]?
+            generateModularHeaders: Bool
         )
     }
 

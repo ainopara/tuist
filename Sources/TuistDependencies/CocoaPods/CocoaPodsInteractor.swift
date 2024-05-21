@@ -125,7 +125,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         var subspecDictionarry: [String: [String]] = [:]
-        for case .remote(let name, _, let subpsecs, _, _) in dependencies.pods {
+        for case .remote(let name, _, let subpsecs, _) in dependencies.pods {
             subspecDictionarry[name] = subpsecs
         }
 
@@ -620,7 +620,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         _ = try await pods.concurrentMap { pod in
             switch pod {
-            case .remote(let name, let source, _, _, _):
+            case .remote(let name, let source, _, _):
                 switch source {
                 case .version(let version):
                     try self.dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version, sources: sources)
@@ -780,7 +780,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         for dependency in dependencies.pods {
             switch dependency {
-            case .remote(let name, _, let subspecs, let generateModularHeaders, _):
+            case .remote(let name, _, let subspecs, let generateModularHeaders):
                 podfile += "  pod '\(name)', :podspec => 'Podspecs/\(name).podspec.json'"
                 if let subspecs {
                     let quoted = subspecs.map { "'\($0)'" }

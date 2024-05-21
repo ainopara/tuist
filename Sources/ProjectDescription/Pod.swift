@@ -15,8 +15,7 @@ public enum Pod: Equatable, Codable {
         name: String,
         source: PodSource,
         subspecs: [String]? = nil,
-        generateModularHeaders: Bool = true,
-        configurations: [String]? = nil
+        generateModularHeaders: Bool = true
     )
 }
 
