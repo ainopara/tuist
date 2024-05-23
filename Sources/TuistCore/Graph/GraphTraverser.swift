@@ -656,9 +656,6 @@ public class GraphTraverser: GraphTraversing {
         let allTargetExternalDependendedUponTargets = filterDependencies(from: graphDependenciesWithExternalDependencies)
             .compactMap { graphDependency -> GraphTarget? in
                 if case let GraphDependency.target(name, path) = graphDependency {
-//                    if name.hasPrefix("Pods_") || name.hasPrefix("libPods-") {
-//                        return nil
-//                    }
                     let target = graph.targets[path]![name]!
                     let project = graph.projects[path]!
                     return GraphTarget(path: path, target: target, project: project)
