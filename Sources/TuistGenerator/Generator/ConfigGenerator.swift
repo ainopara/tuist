@@ -315,6 +315,7 @@ final class ConfigGenerator: ConfigGenerating {
         graphTraverser: GraphTraversing,
         projectPath: AbsolutePath
     ) -> SettingsDictionary {
+        return [:]
         let pluginExecutables = graphTraverser.allSwiftPluginExecutables(path: projectPath, name: target.name)
         var settings: SettingsDictionary = [:]
         if pluginExecutables.isEmpty { return settings }
