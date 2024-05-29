@@ -809,9 +809,32 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         pathsProvider: CocoaPodsPathsProvider,
         dependencies: TuistGraph.CocoaPodsDependencies
     ) throws {
+        if fileHandler.exists(pathsProvider.destinationPodfileLockPath) {
+            try copy(
+                from: pathsProvider.destinationPodfileLockPath,
+                to: pathsProvider.temporaryPodfileLockPath
+            )
+        }
     }
 
     private func saveDependencies(pathsProvider: CocoaPodsPathsProvider) throws {
+        if fileHandler.exists(pathsProvider.temporaryPodfileLockPath) {
+            try copy(
+                from: pathsProvider.temporaryPodfileLockPath,
+                to: pathsProvider.destinationPodfileLockPath
+            )
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func copy(from fromPath: AbsolutePath, to toPath: AbsolutePath) throws {
+        if fileHandler.exists(toPath) {
+            try fileHandler.replace(toPath, with: fromPath)
+        } else {
+            try fileHandler.createFolder(toPath.removingLastComponent())
+            try fileHandler.copy(from: fromPath, to: toPath)
+        }
     }
 }
 
