@@ -238,7 +238,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     deploymentTargets: .iOS("12.0"),
                     resources: ResourceFileElements(
                         resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map {
-                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && ($0.hasSuffix(".lproj/") || $0.hasSuffix(".xcassets/")) {
+                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".xcassets/") {
                                 return .glob(pattern: Path(String($0.dropLast())))
                             } else if $0.hasSuffix("/") {
                                 return .glob(pattern: Path($0 + "**"))
@@ -262,7 +262,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     bundleId: "org.cocoapods.\(spec.name).bundle".replacingOccurrences(of: "_", with: "-"),
                     resources: ResourceFileElements(
                         resources: notBundleFiles.map {
-                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && ($0.hasSuffix(".lproj/") || $0.hasSuffix(".xcassets/")) {
+                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".xcassets/") {
                                 return .glob(pattern: Path(String($0.dropLast())))
                             } else if $0.hasSuffix("/") {
                                 return .glob(pattern: Path($0 + "**"))
