@@ -38,7 +38,7 @@ public final class CocoaPodsController: CocoaPodsControlling {
 
     public func install(at path: AbsolutePath, printOutput: Bool) throws {
 
-        let command = buildCocoaPodsCommand(path: path, subcommand: "install", arguments: []) // ["--repo-update"]
+        let command = buildCocoaPodsCommand(path: path, subcommand: "install", arguments: [])
 
         if printOutput {
             try System.shared.runAndPrint(command, verbose: false, environment: defaultEnv)

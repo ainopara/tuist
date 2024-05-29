@@ -113,6 +113,11 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
                         type: .framework,
                         status: .optional,
                         condition: nil
+                    ),
+                    ProjectDescription.TargetDependency.bundle(
+                        path: Path(
+                            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MobileQuickLogin/TYRZResource.bundle/"
+                        )
                     )
                 ]
             ]

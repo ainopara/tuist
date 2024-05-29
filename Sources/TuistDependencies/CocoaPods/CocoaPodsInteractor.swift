@@ -749,6 +749,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             path: pathsProvider.destinationCocoaPodsDirectory.appending(component: "Project.swift"),
             atomically: true
         )
+        try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory.appending(component: "Sources"))
         try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory.appending(component: "Tuist"))
 
         var env = System.shared.env
