@@ -50,6 +50,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         let pathsProvider = CocoaPodsPathsProvider(dependenciesDirectory: dependenciesDirectory)
 
+        try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory)
+
         let savedCWD = localFileSystem.currentWorkingDirectory
         try localFileSystem.changeCurrentWorkingDirectory(to: pathsProvider.destinationCocoaPodsDirectory)
         
@@ -71,7 +73,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         if shouldUpdate {
             try cocoaPodsController.update(at: pathsProvider.destinationCocoaPodsDirectory, printOutput: true)
         } else {
-            try cocoaPodsController.install(at: pathsProvider.destinationCocoaPodsDirectory, printOutput: true)
+            try cocoaPodsController.update(at: pathsProvider.destinationCocoaPodsDirectory, printOutput: true)
         }
 
         try saveDependencies(pathsProvider: pathsProvider)
@@ -743,7 +745,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         )
         """
 
-        try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory)
         try FileHandler.shared.write(
             projectSwiftFile,
             path: pathsProvider.destinationCocoaPodsDirectory.appending(component: "Project.swift"),

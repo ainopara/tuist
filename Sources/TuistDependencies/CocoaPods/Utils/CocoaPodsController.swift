@@ -3,6 +3,7 @@ import TSCUtility
 import TuistCore
 import TuistGraph
 import TuistSupport
+import Foundation
 
 // MARK: - CocoaPods Controlling
 
@@ -62,7 +63,7 @@ public final class CocoaPodsController: CocoaPodsControlling {
 
     private func buildCocoaPodsCommand(path: AbsolutePath, subcommand: String, arguments: [String] = []) -> [String] {
         let commandComponents: [String] = [
-            "/Users/ainopara/.rbenv/shims/bundle",
+            ("~/.rbenv/shims/bundle" as NSString).expandingTildeInPath,
             "exec",
             "pod",
             subcommand
