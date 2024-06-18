@@ -40,13 +40,25 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         self.cocoaPodsController = cocoaPodsController
     }
 
+    func withWorkingDirectory(path: AbsolutePath, block: () throws -> Void) throws {
+        let savedCWD = localFileSystem.currentWorkingDirectory
+        try localFileSystem.changeCurrentWorkingDirectory(to: path)
+
+        defer {
+            if let savedCWD = savedCWD {
+                try! localFileSystem.changeCurrentWorkingDirectory(to: savedCWD)
+            }
+        }
+        try block()
+    }
+
     public func install(
         dependenciesDirectory: AbsolutePath,
         dependencies: TuistGraph.CocoaPodsDependencies,
         platforms: Set<TuistGraph.PackagePlatform>,
         shouldUpdate: Bool
     ) async throws -> TuistCore.DependenciesGraph {
-        logger.info("Installing CocoaPods dependencies.", metadata: .subsection)
+        logger.info("\nInstalling CocoaPods dependencies.", metadata: .subsection)
 
         let pathsProvider = CocoaPodsPathsProvider(dependenciesDirectory: dependenciesDirectory)
 
@@ -665,18 +677,66 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
 
+        func updateSpecInSource(sourceName: String, sourceURL: String, isCDN: Bool) throws {
+            logger.info("Updating \(sourceName) for \(name) (\(version))...")
+            if isCDN {
+                let prefixPath = name.md5.prefix(3).map(String.init).joined(separator: "/")
+                let specDownloadURL = URL(string: sourceURL)!.appendingPathComponent("Specs/\(prefixPath)/\(name)/\(version)/\(name).podspec")
+                let specJsonDownloadURL = URL(string: sourceURL)!.appendingPathComponent( "Specs/\(prefixPath)/\(name)/\(version)/\(name).podspec.json")
+                let specFolderPath = try AbsolutePath(validating: NSHomeDirectory() + "/.cocoapods/repos/\(sourceName)/Specs/\(prefixPath)/\(name)/\(version)")
+                let jsonSpecPath = specFolderPath.appending(try RelativePath(validating: "\(name).podspec.json"))
+                let specPath = specFolderPath.appending(try RelativePath(validating: "\(name).podspec"))
+                do {
+                    try System.shared.runAndPrint(["mkdir", "-p", specFolderPath.pathString], verbose: true, environment: System.shared.env)
+                    do {
+                        try System.shared.runAndPrint(
+                            ["/usr/bin/curl", "-f", "-LSs", "--output", jsonSpecPath.pathString, specJsonDownloadURL.absoluteString],
+                            verbose: true,
+                            environment: System.shared.env
+                        )
+                    } catch {
+                        try System.shared.runAndPrint(
+                            ["/usr/bin/curl", "-f", "-LSs", "--output", specPath.pathString, specDownloadURL.absoluteString],
+                            verbose: true,
+                            environment: System.shared.env
+                        )
+                    }
+                } catch {
+                    logger.warning("Failed to fetch podspec from \(sourceName)")
+                    return
+                }
+            } else {
+                let specFolderPath = try AbsolutePath(validating: NSHomeDirectory() + "/.cocoapods/repos/\(sourceName)")
+                try withWorkingDirectory(path: specFolderPath) {
+                    try? System.shared.runAndPrint(["git", "pull"], verbose: true, environment: System.shared.env)
+                }
+            }
+        }
+
         var specPathCandidates: [AbsolutePath] = []
         for source in sources {
             let paths = try findSpecInSource(sourceName: source.name, isCDN: source.isCDN)
             specPathCandidates += paths
         }
 
-        guard let specPath = specPathCandidates.first(where: { localFileSystem.exists($0) }) else {
-            logger.warning("Cannot find \(name).podspec.json in sources:")
-            for candidate in specPathCandidates {
-                logger.warning("  - \(candidate.pathString)")
+        let specPath: AbsolutePath
+
+        if let foundedSpecPath = specPathCandidates.first(where: { localFileSystem.exists($0) }) {
+            specPath = foundedSpecPath
+        } else {
+            for source in sources {
+                try updateSpecInSource(sourceName: source.name, sourceURL: source.url, isCDN: source.isCDN)
             }
-            return
+            
+            if let foundedSpecPath = specPathCandidates.first(where: { localFileSystem.exists($0) }) {
+                specPath = foundedSpecPath
+            } else {
+                logger.error("Cannot find \(name).podspec.json at path:")
+                for candidate in specPathCandidates {
+                    logger.error("  - \(candidate.pathString)")
+                }
+                return
+            }
         }
 
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")

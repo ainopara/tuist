@@ -28,7 +28,7 @@ extension TuistGraph.CocoaPodsDependencies {
 
 extension TuistGraph.CocoaPodsDependencies.PodSpecSource {
     static func from(manifest: ProjectDescription.PodSpecSource) -> Self {
-        return .init(name: manifest.name, isCDN: manifest.isCDN)
+        return .init(name: manifest.name, url: manifest.url, isCDN: manifest.isCDN)
     }
 }
 

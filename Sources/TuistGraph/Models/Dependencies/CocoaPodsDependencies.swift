@@ -4,10 +4,12 @@ public struct CocoaPodsDependencies: Equatable {
 
     public struct PodSpecSource: Codable, Equatable {
         public let name: String
+        public let url: String
         public let isCDN: Bool
 
-        public init(name: String, isCDN: Bool) {
+        public init(name: String, url: String, isCDN: Bool) {
             self.name = name
+            self.url = url
             self.isCDN = isCDN
         }
     }
