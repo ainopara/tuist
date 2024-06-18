@@ -403,10 +403,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     }
                 }
 
-                if ["YTKRouterManager", "VGOWeb", "VGOFoundation", "VGOUIKit", "YTKCoreText", "ProtocolBuffers", "React-Core", "VGOCamera"].contains(spec.name) {
-                    specSpecificConfigurations[index].settings["GCC_PREFIX_HEADER"] = .string("../Target Support Files/\(spec.name)/\(spec.name)-prefix.pch")
-                }
-
                 specSpecificConfigurations[index].settings["PODS_TARGET_SRCROOT"] = .string("${PODS_ROOT}/\(spec.name)")
 
                 if let podTargetXcconfig = spec.podTargetXcconfig {
