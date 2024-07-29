@@ -388,7 +388,7 @@ let package = Package(
         .package(url: "https://github.com/kishikawakatsumi/KeychainAccess", from: "4.2.2"),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.0"),
         .package(url: "https://github.com/stencilproject/Stencil", exact: "0.15.1"),
-        .package(url: "https://github.com/SwiftDocOrg/GraphViz", exact: "0.2.0"),
+        .package(url: "https://github.com/ainopara/GraphViz", exact: "0.2.0"),
         .package(url: "https://github.com/SwiftGen/StencilSwiftKit", exact: "2.10.1"),
         .package(url: "https://github.com/SwiftGen/SwiftGen", exact: "6.6.2"),
         .package(url: "https://github.com/tuist/XcodeProj", exact: "8.15.0"),

@@ -9,6 +9,10 @@ extension FileListGlob {
         generatorPaths: GeneratorPaths,
         filter: ((AbsolutePath) -> Bool)? = nil
     ) throws -> [AbsolutePath] {
+        if isSingle {
+            return try [AbsolutePath(validating: glob.pathString)]
+        }
+
         if glob.pathString.contains("$") {
             return [try generatorPaths.resolve(path: glob)]
         }

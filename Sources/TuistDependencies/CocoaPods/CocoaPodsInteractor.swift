@@ -240,6 +240,20 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
         // MARK: - Resource Bundles
 
+        func mapGlobResult(_ result: String) -> ProjectDescription.ResourceFileElement {
+            if localFileSystem.isDirectory(try! AbsolutePath(validating: result)) {
+                if result.hasSuffix(".xcassets/") {
+                    return .glob(pattern: Path(String(result.dropLast())))
+                } else {
+                    return .folderReference(path: Path(String(result.dropLast())))
+                }
+            } else if result.hasSuffix("/") {
+                return .glob(pattern: Path(result + "**"))
+            } else {
+                return .glob(pattern: Path(result))
+            }
+        }
+
         let resourceBundles = spec.resourceBundles ?? [:]
         for (key, globs) in resourceBundles {
             bundleTargets.append(
@@ -251,15 +265,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     bundleId: "org.cocoapods.\(spec.name).bundle.\(key)".replacingOccurrences(of: "_", with: "-"),
                     deploymentTargets: .iOS("12.0"),
                     resources: ResourceFileElements(
-                        resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map {
-                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".xcassets/") {
-                                return .glob(pattern: Path(String($0.dropLast())))
-                            } else if $0.hasSuffix("/") {
-                                return .glob(pattern: Path($0 + "**"))
-                            } else {
-                                return .glob(pattern: Path($0))
-                            }
-                        }
+                        resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map(mapGlobResult)
                     ),
                     settings: bundleTargetSettings
                 )
@@ -274,17 +280,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     product: .bundle,
                     productName: spec.name + "_resource",
                     bundleId: "org.cocoapods.\(spec.name).bundle".replacingOccurrences(of: "_", with: "-"),
-                    resources: ResourceFileElements(
-                        resources: notBundleFiles.map {
-                            if localFileSystem.isDirectory(try! AbsolutePath(validating: $0)) && $0.hasSuffix(".xcassets/") {
-                                return .glob(pattern: Path(String($0.dropLast())))
-                            } else if $0.hasSuffix("/") {
-                                return .glob(pattern: Path($0 + "**"))
-                            } else {
-                                return .glob(pattern: Path($0))
-                            }
-                        }
-                    ),
+                    resources: ResourceFileElements(resources: notBundleFiles.map(mapGlobResult)),
                     settings: bundleTargetSettings
                 )
             )

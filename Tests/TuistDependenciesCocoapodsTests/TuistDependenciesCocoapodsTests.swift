@@ -49,6 +49,14 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             ]
         )
 
+        XCTAssertNoDifference(
+            Podspec.expandToValidGlob(from: "MLKitDigitalInkRecognition_resource/**"),
+            [
+                "MLKitDigitalInkRecognition_resource/**"
+            ]
+        )
+
+
     }
 
     func testPodspecParsingMobileQuickLogin() throws {

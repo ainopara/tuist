@@ -131,10 +131,10 @@ public class Glob: Collection {
             // Check the base directory for the glob star as well.
             directories.insert(firstPart, at: 0)
 
-            // Include the globstar root directory ("dir/") in a pattern like "dir/**" or "dir/**/"
-            if lastPart.isEmpty {
-                results.append(firstPart)
-            }
+//            // Include the globstar root directory ("dir/") in a pattern like "dir/**" or "dir/**/"
+//            if lastPart.isEmpty {
+//                results.append(firstPart)
+//            }
         }
 
         if lastPart.isEmpty {
