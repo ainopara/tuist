@@ -275,20 +275,77 @@ extension TuistCore.DependenciesGraph {
         var mergedExternalDependencies: [String: [ProjectDescription.TargetDependency]] =
             externalDependencies
 
+        var overridingDependencies: [ProjectDescription.TargetDependency] = []
         for (name, dependency) in other.externalDependencies {
             if let alreadyPresent = mergedExternalDependencies[name] {
-                throw DependenciesControllerError.duplicatedDependency(name, alreadyPresent, dependency)
+                logger.warning("Dependency \(name) is defined twice across different dependency managers")
+                overridingDependencies += dependency
             }
             mergedExternalDependencies[name] = dependency
         }
 
-        let mergedExternalProjects = try other.externalProjects.reduce(into: externalProjects) { result, entry in
+        let modifiedSelfProjects = externalProjects.mapValues { project in
+            if overridingDependencies.isEmpty {
+                return project
+            } else {
+                return ProjectDescription.Project.from(project: project, replacing: overridingDependencies)
+            }
+        }
+
+        let mergedExternalProjects = other.externalProjects.reduce(into: modifiedSelfProjects) { result, entry in
             if let alreadyPresent = result[entry.key] {
-                throw DependenciesControllerError.duplicatedProject(entry.key, alreadyPresent, entry.value)
+                logger.warning("Project \(entry.key) is defined twice across different dependency managers.")
+                return
             }
             result[entry.key] = entry.value
         }
 
         return .init(externalDependencies: mergedExternalDependencies, externalProjects: mergedExternalProjects)
+    }
+}
+
+extension ProjectDescription.Project {
+    static func from(project: ProjectDescription.Project, replacing targetDependencies: [ProjectDescription.TargetDependency]) -> ProjectDescription.Project {
+        return ProjectDescription.Project(
+            name: project.name,
+            organizationName: project.organizationName,
+            options: project.options,
+            packages: project.packages,
+            settings: project.settings,
+            targets: project.targets.map { target in
+                var modifiedTarget = target
+                if target.name == "VGONetwork" {
+                    logger.debug("VGONetwork")
+                }
+                modifiedTarget.dependencies = modifiedTarget.dependencies.map { dependency in
+                    guard case .project(let originalDependencyTargetName, let originalPath, _) = dependency else {
+                        return dependency
+                    }
+
+                    if let replacedDependency = targetDependencies.first(where: { newDependency in
+                        if
+                            case .project(let newDependencyTargetName, let path, _) = newDependency,
+                            originalDependencyTargetName == newDependencyTargetName,
+                            originalPath != path
+                        {
+                            logger.info("\(target.name): Replacing \(originalDependencyTargetName) with new one at path \(path.pathString)")
+                            return true
+                        } else {
+                            return false
+                        }
+                    }) {
+                        // TODO: keep the original condition
+                        return replacedDependency
+                    } else {
+                        return dependency
+                    }
+                }
+                return modifiedTarget
+            },
+            schemes: project.schemes,
+            fileHeaderTemplate: project.fileHeaderTemplate,
+            additionalFiles: project.additionalFiles,
+            resourceSynthesizers: project.resourceSynthesizers
+        )
     }
 }

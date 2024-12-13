@@ -48,9 +48,9 @@
     {
       "identity" : "graphviz",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/SwiftDocOrg/GraphViz.git",
+      "location" : "https://github.com/ainopara/GraphViz",
       "state" : {
-        "revision" : "70bebcf4597b9ce33e19816d6bbd4ba9b7bdf038",
+        "revision" : "b47500941d07476339439b59ceb92f329bf317a0",
         "version" : "0.2.0"
       }
     },
