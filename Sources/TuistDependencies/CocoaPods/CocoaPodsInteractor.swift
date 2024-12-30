@@ -7,6 +7,19 @@ import TuistSupport
 import Foundation
 import TuistLoader
 
+actor SpecSourceGitManager {
+
+    static let shared = SpecSourceGitManager()
+
+    private var pulledRepoPaths: Set<AbsolutePath> = []
+
+    func pullSpecSourceIfNeeded(specFolderPath: AbsolutePath) async throws {
+        guard !pulledRepoPaths.contains(specFolderPath) else { return }
+        pulledRepoPaths.insert(specFolderPath)
+        try System.shared.runAndPrint(["git", "-C", specFolderPath.pathString, "pull"], verbose: true, environment: System.shared.env)
+    }
+}
+
 public protocol CocoaPodsInteracting {
     /// Installs `Cocoapod` dependencies.
     /// - Parameters:
@@ -42,10 +55,13 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
     func withWorkingDirectory(path: AbsolutePath, block: () throws -> Void) throws {
         let savedCWD = localFileSystem.currentWorkingDirectory
+        logger.debug("Changing current working directory from \(savedCWD?.pathString ?? "nil") to \(path.pathString)")
         try localFileSystem.changeCurrentWorkingDirectory(to: path)
+
 
         defer {
             if let savedCWD = savedCWD {
+                logger.debug("Restoring current working directory \(savedCWD.pathString)")
                 try! localFileSystem.changeCurrentWorkingDirectory(to: savedCWD)
             }
         }
@@ -65,10 +81,13 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory)
 
         let savedCWD = localFileSystem.currentWorkingDirectory
+        logger.debug("Changing current working directory from \(savedCWD?.pathString ?? "nil") to \(pathsProvider.destinationCocoaPodsDirectory.pathString)")
         try localFileSystem.changeCurrentWorkingDirectory(to: pathsProvider.destinationCocoaPodsDirectory)
-        
+
+
         defer {
             if let savedCWD = savedCWD {
+                logger.debug("Restoring current working directory \(savedCWD.pathString)")
                 try! localFileSystem.changeCurrentWorkingDirectory(to: savedCWD)
             }
         }
@@ -622,6 +641,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         try localFileSystem.createDirectory(specsDirectory)
 
         let savedCWD = localFileSystem.currentWorkingDirectory
+        logger.debug("Changing current working directory from \(savedCWD?.pathString ?? "nil") to \(specsDirectory.pathString)")
         try localFileSystem.changeCurrentWorkingDirectory(to: specsDirectory)
 
         _ = try await pods.concurrentMap { pod in
@@ -629,7 +649,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             case .remote(let name, let source, _, _):
                 switch source {
                 case .version(let version):
-                    try self.dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version, sources: sources)
+                    try await self.dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version, sources: sources)
                 case .podspec(let path):
                     try self.dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
                 }
@@ -637,6 +657,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
 
         if let savedCWD {
+            logger.debug("Restoring current working directory \(savedCWD.pathString)")
             try localFileSystem.changeCurrentWorkingDirectory(to: savedCWD)
         }
 
@@ -652,7 +673,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         return results
     }
 
-    private func dealWithSourceVersion(pathsProvider: CocoaPodsPathsProvider, name: String, version: String, sources: [CocoaPodsDependencies.PodSpecSource]) throws {
+    private func dealWithSourceVersion(pathsProvider: CocoaPodsPathsProvider, name: String, version: String, sources: [CocoaPodsDependencies.PodSpecSource]) async throws {
 
         func findSpecInSource(sourceName: String, isCDN: Bool) throws -> [AbsolutePath] {
             if isCDN {
@@ -669,7 +690,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             }
         }
 
-        func updateSpecInSource(sourceName: String, sourceURL: String, isCDN: Bool) throws {
+        func updateSpecInSource(sourceName: String, sourceURL: String, isCDN: Bool) async throws {
             logger.info("Updating \(sourceName) for \(name) (\(version))...")
             if isCDN {
                 let prefixPath = name.md5.prefix(3).map(String.init).joined(separator: "/")
@@ -699,9 +720,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 }
             } else {
                 let specFolderPath = try AbsolutePath(validating: NSHomeDirectory() + "/.cocoapods/repos/\(sourceName)")
-                try withWorkingDirectory(path: specFolderPath) {
-                    try? System.shared.runAndPrint(["git", "pull"], verbose: true, environment: System.shared.env)
-                }
+                try? await SpecSourceGitManager.shared.pullSpecSourceIfNeeded(specFolderPath: specFolderPath)
             }
         }
 
@@ -717,7 +736,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             specPath = foundedSpecPath
         } else {
             for source in sources {
-                try updateSpecInSource(sourceName: source.name, sourceURL: source.url, isCDN: source.isCDN)
+                try await updateSpecInSource(sourceName: source.name, sourceURL: source.url, isCDN: source.isCDN)
             }
             
             if let foundedSpecPath = specPathCandidates.first(where: { localFileSystem.exists($0) }) {
