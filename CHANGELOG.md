@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.42.2-leo.5 - 2024-12-30
+
+- no changes
+
 ## 3.42.2-leo.4 - 2024-12-13
 
 - no changes
