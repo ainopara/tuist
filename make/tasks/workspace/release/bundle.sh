@@ -38,7 +38,7 @@ build_fat_release_library() {
     (
     cd $ROOT_DIR || exit 1
     DEVELOPER_DIR=$XCODE_LIBRARIES_PATH xcrun xcodebuild -resolvePackageDependencies
-    DEVELOPER_DIR=$XCODE_LIBRARIES_PATH xcrun xcodebuild -scheme $1 -configuration Release -destination platform=macosx BUILD_LIBRARY_FOR_DISTRIBUTION=YES ARCHS='arm64 x86_64' BUILD_DIR=$TMP_DIR clean build
+    DEVELOPER_DIR=$XCODE_LIBRARIES_PATH xcrun xcodebuild -scheme $1 -configuration Release -destination "generic/platform=macOS" BUILD_LIBRARY_FOR_DISTRIBUTION=YES ARCHS='arm64 x86_64' BUILD_DIR=$TMP_DIR clean build
 
     # We remove the PRODUCT.swiftmodule/Project directory because
     # this directory contains objects that are not stable across Swift releases.
@@ -54,7 +54,7 @@ build_xcframework_library() {
     (
     cd $ROOT_DIR || exit 1
     DEVELOPER_DIR=$XCODE_LIBRARIES_PATH xcrun xcodebuild -resolvePackageDependencies
-    DEVELOPER_DIR=$XCODE_LIBRARIES_PATH xcrun xcodebuild -scheme $1 -configuration Release -destination platform=macosx BUILD_LIBRARY_FOR_DISTRIBUTION=YES ARCHS='arm64 x86_64' BUILD_DIR=$TMP_DIR clean build
+    DEVELOPER_DIR=$XCODE_LIBRARIES_PATH xcrun xcodebuild -scheme $1 -configuration Release -destination "generic/platform=macOS" BUILD_LIBRARY_FOR_DISTRIBUTION=YES ARCHS='arm64 x86_64' BUILD_DIR=$TMP_DIR clean build
     
     xcodebuild -create-xcframework \
            -framework $TMP_DIR/Release/PackageFrameworks/$1.framework \
