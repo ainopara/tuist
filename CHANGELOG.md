@@ -2,6 +2,10 @@
 
 Please, check out guidelines: https://keepachangelog.com/en/1.0.0/
 
+## 3.42.2-leo.6 - 2025-02-08
+
+- no changes
+
 ## 3.6.0-leo - 2022-06-16
 
 - no changes
