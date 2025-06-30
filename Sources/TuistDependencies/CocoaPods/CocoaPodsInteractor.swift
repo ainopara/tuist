@@ -436,31 +436,94 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
 
             // MARK: - Compiler Flags
 
-            var sharedCompilerFlags = spec.compilerFlags ?? []
+            let sharedCompilerFlags = spec.compilerFlags ?? []
             var customCompilerFlagsDictionary: [String: [String]] = [:]
+            var arcSettingsDictionary: [String: Bool] = [:] // true = enable ARC, false = disable ARC
 
             func compilerFlags(for filePath: String) -> [String] {
                 if isSource(filePath, hasExtensionIn: ["s"]) { return [] }
                 var result = sharedCompilerFlags + (customCompilerFlagsDictionary[filePath] ?? [])
+
+                // Apply ARC settings from separate dictionary
+                if let arcEnabled = arcSettingsDictionary[filePath], !arcEnabled {
+                    result.append("-fno-objc-arc")
+                }
+                
                 if isSource(filePath, hasExtensionIn: ["m", "mm", "c", "cpp", "cc"]) {
                     result += ["-w -Xanalyzer -analyzer-disable-all-checks"]
                 }
                 return result
             }
 
+            // 处理 requires_arc 配置
+            // 首先应用父级 spec 的全局 requires_arc 配置
             switch spec.requiresArc {
             case .bool(let boolValue):
                 if boolValue == false {
-                    sharedCompilerFlags.append("-fno-objc-arc")
+                    // 全局禁用 ARC - 为所有源文件设置
+                    for source in validSources {
+                        arcSettingsDictionary[source] = false
+                    }
                 }
             case .array(let globs):
+                // 指定哪些文件需要 ARC，其他都禁用
                 let sourcesWhoRequireArc = resolveGlobs(manifestPath: manifestPath, globs: globs)
-                let sourcesWhoDoNotRequireArc = Set(validSources).subtracting(sourcesWhoRequireArc)
-                for source in sourcesWhoDoNotRequireArc {
-                    customCompilerFlagsDictionary[source, default: []] += ["-fno-objc-arc"]
+                for source in validSources {
+                    arcSettingsDictionary[source] = sourcesWhoRequireArc.contains(source)
                 }
             case .none:
                 break
+            }
+            
+            // 然后处理 subspec 的 requires_arc 配置，允许覆盖父级设置
+            func processSubspecsRecursively(_ subspecs: [Subspec], selectedNames: Set<String>, path: String = "") {
+                for subspec in subspecs {
+                    // 只处理被选中的 subspec
+                    guard let subspecName = subspec.name, selectedNames.contains([path, subspecName].filter { !$0.isEmpty }.joined(separator: "/")) else {
+                        continue
+                    }
+
+                    print("processSubspecsRecursively -> \(subspecName)")
+
+                    let sourceFiles = subspec.sourceFiles ?? []
+                    let subSpecSources = resolveGlobs(manifestPath: manifestPath, globs: sourceFiles)
+                    let validSubSpecSources = filterFiles(subSpecSources, hasExtensionIn: Target.validSourceExtensions)
+
+                    // 处理当前 subspec 的 requires_arc 配置
+                    switch subspec.requiresArc {
+                    case .bool(let boolValue):
+                        // 为此 subspec 的源文件设置 ARC 配置（覆盖父级设置）
+                        for source in validSubSpecSources {
+                            arcSettingsDictionary[source] = boolValue
+                        }
+                    case .array(let globs):
+                        // 此 subspec 中只对特定文件启用 ARC，其他禁用
+                        let sourcesWhoRequireArc = resolveGlobs(manifestPath: manifestPath, globs: globs)
+                            
+                        // 为此 subspec 的源文件设置精确的 ARC 配置
+                        for source in validSubSpecSources {
+                            arcSettingsDictionary[source] = sourcesWhoRequireArc.contains(source)
+                        }
+                    case .none:
+                        // 此 subspec 未指定 requires_arc，继承父级设置
+                        break
+                    }
+
+                    // Process compilerFlags
+                    for source in validSubSpecSources {
+                        customCompilerFlagsDictionary[source] = subspec.compilerFlags ?? []
+                    }
+                    // 递归处理嵌套的 subspecs
+                    if let nestedSubspecs = subspec.subspecs {
+                        processSubspecsRecursively(nestedSubspecs, selectedNames: selectedNames, path: [path, subspecName].filter { !$0.isEmpty }.joined(separator: "/"))
+                    }
+                }
+            }
+            
+            if let originalSubspecs = spec.subspecs {
+                // 获取当前已经解析的 subspecs 名称
+                let selectedSubspecNames = spec.resolveSubspecNames(selectedSubspecs: nil)
+                processSubspecsRecursively(originalSubspecs, selectedNames: Set(selectedSubspecNames))
             }
 
             // MARK: - Headers

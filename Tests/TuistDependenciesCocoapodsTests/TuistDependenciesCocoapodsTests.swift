@@ -14,6 +14,8 @@ import CustomDump
 
 class TuistDependenciesCocoapodsTests: XCTestCase {
 
+    let pathToPodsRoot = "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods"
+
     func testConvertToGlob() {
         XCTAssertNoDifference(
             Podspec.expandToValidGlob(from: "ReactCommon"),
@@ -63,7 +65,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         let specJSON = """
         {
           "name": "MobileQuickLogin",
-          "version": "5.9.6",
+          "version": "9.6.6",
           "summary": "Mobile Quick Login",
           "homepage": "https://wiki.zhenguanyu.com/iOS/Modules",
           "license": "Private",
@@ -71,16 +73,14 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "huangjx": "huangjx@fenbi.com"
           },
           "source": {
-            "git": "ssh://gerrit.zhenguanyu.com:29418/ios-module-MobileQuickLogin",
-            "tag": "5.9.6"
+            "http": "https://app.zhenguanyu.com/iphone/xcframeworks/MobileQuickLogin/9.6.6/MobileQuickLogin.zip"
           },
           "platforms": {
             "ios": "8.0"
           },
           "vendored_frameworks": [
-            "TYRZUISDK.framework"
+            "TYRZSDK.xcframework"
           ],
-          "resources": "TYRZResource.bundle",
           "pod_target_xcconfig": {
             "OTHER_LDFLAGS": [
               "-ObjC"
@@ -88,6 +88,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
           },
           "weak_frameworks": "Network"
         }
+
         """
         let spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
 
@@ -96,14 +97,14 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.name, "MobileQuickLogin")
-        XCTAssertNoDifference(spec.version, "5.9.6")
+        XCTAssertNoDifference(spec.version, "9.6.6")
         XCTAssertNoDifference(spec.platforms?.ios, "8.0")
-        XCTAssertNoDifference(spec.vendoredFrameworks, ["TYRZUISDK.framework"])
-        XCTAssertNoDifference(spec.resources, ["TYRZResource.bundle"])
+        XCTAssertNoDifference(spec.vendoredFrameworks, ["TYRZSDK.xcframework"])
+        XCTAssertNoDifference(spec.resources, nil)
         XCTAssertNoDifference(spec.podTargetXcconfig?["OTHER_LDFLAGS"]?.wrappedValue, ["-ObjC"])
         XCTAssertNoDifference(spec.weakFrameworks, ["Network"])
         XCTAssertNoDifference(projects, [:])
@@ -111,8 +112,8 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             dependencies,
             [
                 "MobileQuickLogin": [
-                    ProjectDescription.TargetDependency.framework(
-                        path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MobileQuickLogin/TYRZUISDK.framework"),
+                    ProjectDescription.TargetDependency.xcframework(
+                        path: Path("\(pathToPodsRoot)/MobileQuickLogin/TYRZSDK.xcframework"),
                         status: .required,
                         condition: nil
                     ),
@@ -121,11 +122,6 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
                         type: .framework,
                         status: .optional,
                         condition: nil
-                    ),
-                    ProjectDescription.TargetDependency.bundle(
-                        path: Path(
-                            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MobileQuickLogin/TYRZResource.bundle/"
-                        )
                     )
                 ]
             ]
@@ -167,7 +163,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.name, "VGODataEncryptor")
@@ -181,7 +177,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             [
                 "VGODataEncryptor": [
                     ProjectDescription.TargetDependency.xcframework(
-                        path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/VGODataEncryptor/VGODataEncryptor/VGODataEncryptor.xcframework"),
+                        path: Path("\(pathToPodsRoot)/VGODataEncryptor/VGODataEncryptor/VGODataEncryptor.xcframework"),
                         status: .required,
                         condition: nil
                     ),
@@ -288,7 +284,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.name, "TensorFlowLiteSwift")
@@ -354,7 +350,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
 
@@ -372,7 +368,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             [
                 "TensorFlowLiteC": [
                     ProjectDescription.TargetDependency.framework(
-                        path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/TensorFlowLiteC/Frameworks/TensorFlowLiteC.framework"),
+                        path: Path("\(pathToPodsRoot)/TensorFlowLiteC/Frameworks/TensorFlowLiteC.framework"),
                         status: .required,
                         condition: nil
                     ),
@@ -591,7 +587,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.name, "Sentry")
@@ -670,7 +666,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.name, "CocoaLumberjack")
@@ -780,50 +776,50 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         let headers = projects.values.first!.targets[0].headers
 
         XCTAssertNoDifference(headers!.public!.globs.map(\.glob.pathString).sorted(), [
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMBuffer.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKV.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKVLog.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKVPredef.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/PBUtility.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/ScopedLock.hpp",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/ThreadLock.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_md5.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_opensslconf.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Target Support Files/MMKVCore/MMKVCore-umbrella.h"
+            "\(pathToPodsRoot)/MMKVCore/Core/MMBuffer.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MMKV.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MMKVLog.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MMKVPredef.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/PBUtility.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/ScopedLock.hpp",
+            "\(pathToPodsRoot)/MMKVCore/Core/ThreadLock.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_md5.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_opensslconf.h",
+            "\(pathToPodsRoot)/Target Support Files/MMKVCore/MMKVCore-umbrella.h"
         ])
         XCTAssertNoDifference(headers!.private!.globs.map(\.glob.pathString), [])
         XCTAssertNoDifference(headers!.project!.globs.map(\.glob.pathString).sorted(), [
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/CodedInputData.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/CodedInputDataCrypt.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/CodedOutputData.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/InterProcessLock.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/KeyValueHolder.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKVMetaInfo.hpp",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKV_IO.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MMKV_OSX.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MemoryFile.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/MiniPBCoder.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/PBEncodeItem.hpp",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/AESCrypt.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_aes.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_aes_locl.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_arm_arch.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_md32_common.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/aes/openssl/openssl_md5_locl.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore/Core/crc32/Checksum.h"
+            "\(pathToPodsRoot)/MMKVCore/Core/CodedInputData.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/CodedInputDataCrypt.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/CodedOutputData.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/InterProcessLock.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/KeyValueHolder.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MMKVMetaInfo.hpp",
+            "\(pathToPodsRoot)/MMKVCore/Core/MMKV_IO.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MMKV_OSX.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MemoryFile.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/MiniPBCoder.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/PBEncodeItem.hpp",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/AESCrypt.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_aes.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_aes_locl.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_arm_arch.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_md32_common.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_md5_locl.h",
+            "\(pathToPodsRoot)/MMKVCore/Core/crc32/Checksum.h"
         ])
 
         XCTAssertNoDifference(dependencies, [
             "MMKVCore": [
                 .project(
                     target: "MMKVCore",
-                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/MMKVCore")
+                    path: Path("\(pathToPodsRoot)/MMKVCore")
                 )
             ]
         ])
@@ -890,7 +886,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(projects, [:])
@@ -898,20 +894,20 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         XCTAssertNoDifference(dependencies, [
             "OpenSSL-Private": [
                 .library(
-                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libcrypto.a"),
-                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private"),
+                    path: Path("\(pathToPodsRoot)/OpenSSL-Private/lib/libcrypto.a"),
+                    publicHeaders: Path("\(pathToPodsRoot)/Headers/Public/OpenSSL-Private"),
                     swiftModuleMap: nil
                 ),
                 .library(
-                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/OpenSSL-Private/lib/libssl.a"),
-                    publicHeaders: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private"),
+                    path: Path("\(pathToPodsRoot)/OpenSSL-Private/lib/libssl.a"),
+                    publicHeaders: Path("\(pathToPodsRoot)/Headers/Public/OpenSSL-Private"),
                     swiftModuleMap: nil
                 ),
                 .headerSearchPath(
-                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public/OpenSSL-Private")
+                    path: Path("\(pathToPodsRoot)/Headers/Public/OpenSSL-Private")
                 ),
                 .headerSearchPath(
-                    path: Path("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Headers/Public")
+                    path: Path("\(pathToPodsRoot)/Headers/Public")
                 )
             ]
         ])
@@ -1040,31 +1036,31 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         let headers = projects.values.first!.targets[0].headers
 
         XCTAssertNoDifference(headers!.public!.globs.map(\.glob.pathString).sorted(), [
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFCompatibilityMacros.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFHTTPSessionManager.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFNetworkReachabilityManager.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFSecurityPolicy.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFURLRequestSerialization.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFURLResponseSerialization.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/AFNetworking/AFURLSessionManager.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/AFImageDownloader.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIKit+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.h",
-            "/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods/Target Support Files/AFNetworking/AFNetworking-umbrella.h"
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFCompatibilityMacros.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFHTTPSessionManager.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFNetworkReachabilityManager.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFSecurityPolicy.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFURLRequestSerialization.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFURLResponseSerialization.h",
+            "\(pathToPodsRoot)/AFNetworking/AFNetworking/AFURLSessionManager.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/AFAutoPurgingImageCache.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/AFImageDownloader.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/AFNetworkActivityIndicatorManager.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/UIActivityIndicatorView+AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/UIButton+AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/UIImageView+AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/UIKit+AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/UIProgressView+AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/UIRefreshControl+AFNetworking.h",
+            "\(pathToPodsRoot)/AFNetworking/UIKit+AFNetworking/WKWebView+AFNetworking.h",
+            "\(pathToPodsRoot)/Target Support Files/AFNetworking/AFNetworking-umbrella.h"
         ])
         XCTAssertNoDifference(headers!.private!.globs.map(\.glob.pathString), [])
         XCTAssertNoDifference(headers!.project!.globs.map(\.glob.pathString).sorted(), [
@@ -1134,7 +1130,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.dependencies?.keys.sorted(), [
@@ -1246,7 +1242,7 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             descriptionBaseSettings: [:],
             descriptionConfigurations: [],
             targetSettings: [:],
-            podsDirectoryPath: AbsolutePath("/Users/ainopara/Documents/Projects/fenbi/leo-ios/Tuist/Dependencies/CocoaPods/Pods")
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
         )
 
         XCTAssertNoDifference(spec.resolveSubspecNames(selectedSubspecs: nil), ["react_debug_core", "turbomodule"])
@@ -1257,5 +1253,259 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "ReactCommon/react/nativemodule/samples/ReactCommon/**/*.{cpp,h}",
             "ReactCommon/react/nativemodule/samples/platform/ios/**/*.{mm,cpp,h}"
         ])
+    }
+
+    func testPodspecYTKUtils() throws {
+        let specJSON = #"""
+        {
+          "name": "YTKUtils",
+          "version": "1.3.15.0",
+          "summary": "Common utils.",
+          "homepage": "https://wiki.zhenguanyu.com/iOS/Modules/YTKUtils",
+          "license": "Private",
+          "authors": {
+            "lancy": "lancy@fenbi.com"
+          },
+          "source": {
+            "git": "ssh://gerrit.zhenguanyu.com:29418/ios-module-YTKUtils",
+            "tag": "1.3.15.0"
+          },
+          "source_files": "Classes/YTKUtils.h",
+          "frameworks": [
+            "UIKit",
+            "CoreTelephony"
+          ],
+          "libraries": "c++",
+          "platforms": {
+            "ios": "9.0"
+          },
+          "dependencies": {
+            "MBProgressHUD": [
+              "~> 0.9.2"
+            ],
+            "AFNetworking/Reachability": [
+              "~> 4.0"
+            ]
+          },
+          "default_subspecs": [
+            "NonARC",
+            "Utils",
+            "Macros",
+            "NSString",
+            "Collections",
+            "NSData",
+            "UIDevice",
+            "UIView",
+            "UIButton",
+            "UITableViewCell",
+            "NSDate",
+            "UIGestureRecognizer",
+            "NSNull",
+            "NSNumber",
+            "NSObject"
+          ],
+          "subspecs": [
+            {
+              "name": "NonARC",
+              "source_files": "Classes/NonARC/**/*.{h,m,mm}",
+              "requires_arc": false,
+              "compiler_flags": "-fno-objc-arc"
+            },
+            {
+              "name": "Utils",
+              "source_files": "Classes/Utils/**/*.{h,m,mm}",
+              "requires_arc": true,
+              "dependencies": {
+                "YTKUtils/Macros": [
+
+                ],
+                "YTKUtils/NSString": [
+
+                ],
+                "YTKUtils/Collections": [
+
+                ],
+                "YTKUtils/NSData": [
+
+                ]
+              }
+            },
+            {
+              "name": "Macros",
+              "source_files": "Classes/Macros/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "NSString",
+              "source_files": "Classes/NSString/**/*.{h,m,mm}",
+              "requires_arc": true,
+              "dependencies": {
+                "YTKUtils/Macros": [
+
+                ]
+              }
+            },
+            {
+              "name": "Collections",
+              "source_files": "Classes/Collections/**/*.{h,m,mm}",
+              "requires_arc": true,
+              "dependencies": {
+                "YTKUtils/Macros": [
+
+                ]
+              }
+            },
+            {
+              "name": "NSData",
+              "source_files": "Classes/NSData/**/*.{h,m,mm}",
+              "requires_arc": true,
+              "dependencies": {
+                "YTKUtils/NonARC": [
+
+                ]
+              }
+            },
+            {
+              "name": "UIDevice",
+              "source_files": "Classes/UIDevice/**/*.{h,m,mm}",
+              "requires_arc": true,
+              "dependencies": {
+                "YTKUtils/NSString": [
+
+                ]
+              }
+            },
+            {
+              "name": "UIView",
+              "source_files": "Classes/UIView/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "NSDate",
+              "source_files": "Classes/NSDate/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "UIButton",
+              "source_files": "Classes/UIButton/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "UITableViewCell",
+              "source_files": "Classes/UITableViewCell/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "UIGestureRecognizer",
+              "source_files": "Classes/UIGestureRecognizer/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "NSNull",
+              "source_files": "Classes/NSNull/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "NSNumber",
+              "source_files": "Classes/NSNumber/**/*.{h,m,mm}",
+              "requires_arc": true
+            },
+            {
+              "name": "NSObject",
+              "source_files": "Classes/NSObject/**/*.{h,m,mm}",
+              "requires_arc": true
+            }
+          ]
+        }
+        """#
+
+        var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
+        spec = spec.resolvePodspec(selectedSubspecs: nil)
+
+        let (projects, dependencies) = CocoaPodsInteractor().generateProjectDescription(
+            for: spec,
+            descriptionBaseSettings: [:],
+            descriptionConfigurations: [],
+            targetSettings: [:],
+            podsDirectoryPath: AbsolutePath(pathToPodsRoot)
+        )
+
+        XCTAssertNoDifference(spec.resolveSubspecNames(selectedSubspecs: nil), [
+            "Collections",
+            "Macros",
+            "NSData",
+            "NSDate",
+            "NSNull",
+            "NSNumber",
+            "NSObject",
+            "NSString",
+            "NonARC",
+            "UIButton",
+            "UIDevice",
+            "UIGestureRecognizer",
+            "UITableViewCell",
+            "UIView",
+            "Utils"
+        ])
+
+        let commonCompilerFlags = "-w -Xanalyzer -analyzer-disable-all-checks"
+        let sourceInfos = projects.first!.value.targets.first!.sourceTestDescriptions
+            .map {
+                return (
+                    $0.key.replacingOccurrences(of: pathToPodsRoot, with: ""),
+                    $0.value.replacingOccurrences(of: commonCompilerFlags, with: "")
+                )
+            }
+            .reduce(into: [:]) { $0[$1.0] = $1.1 }
+
+        XCTAssertNoDifference(sourceInfos, [
+              "/YTKUtils/Classes/Collections/NSArray+Join.m": "",
+              "/YTKUtils/Classes/Collections/NSArray+jsonString.m": "",
+              "/YTKUtils/Classes/Collections/NSDictionary+jsonString.m": "",
+              "/YTKUtils/Classes/Collections/NSSet+join.m": "",
+              "/YTKUtils/Classes/NSData/NSData+AESAdditions.m": "",
+              "/YTKUtils/Classes/NSDate/NSDate+LongToDate.m": "",
+              "/YTKUtils/Classes/NSDate/NSDate+Utilities.m": "",
+              "/YTKUtils/Classes/NSNull/NSNull+stringValue.m": "",
+              "/YTKUtils/Classes/NSNumber/NSNumber+dateValue.m": "",
+              "/YTKUtils/Classes/NSObject/NSObject+Notification.m": "",
+              "/YTKUtils/Classes/NSString/NSString+MD5Addition.m": "",
+              "/YTKUtils/Classes/NSString/NSString+objectFromJSONString.m": "",
+              "/YTKUtils/Classes/NSString/NSString+stringValue.m": "",
+              "/YTKUtils/Classes/NonARC/Base64_Encoding/NSData+Base64.m": "-fno-objc-arc -fno-objc-arc ",
+              "/YTKUtils/Classes/NonARC/SecurityUtils/CryptoUtil.m": "-fno-objc-arc -fno-objc-arc ",
+              "/YTKUtils/Classes/NonARC/SecurityUtils/KeychainUtil.m": "-fno-objc-arc -fno-objc-arc ",
+              "/YTKUtils/Classes/UIButton/UIButton+addTouchTarget.m": "",
+              "/YTKUtils/Classes/UIDevice/UIDevice+CYHardware.m": "",
+              "/YTKUtils/Classes/UIDevice/UIDevice+IdentifierAddition.m": "",
+              "/YTKUtils/Classes/UIDevice/UIDevice+JailBreak.m": "",
+              "/YTKUtils/Classes/UIGestureRecognizer/UIGestureRecognizer+Cancel.m": "",
+              "/YTKUtils/Classes/UITableViewCell/UITableViewCell+tableView.m": "",
+              "/YTKUtils/Classes/UIView/UIView+frameAdjust.m": "",
+              "/YTKUtils/Classes/UIView/UIView+viewWithType.m": "",
+              "/YTKUtils/Classes/Utils/ApplicationUtils.m": "",
+              "/YTKUtils/Classes/Utils/DateUtils.m": "",
+              "/YTKUtils/Classes/Utils/EncryptUtils.mm": "",
+              "/YTKUtils/Classes/Utils/FileUtils.m": "",
+              "/YTKUtils/Classes/Utils/ImageUtils.m": "",
+              "/YTKUtils/Classes/Utils/NSStringWrapper.m": "",
+              "/YTKUtils/Classes/Utils/NetworkUtils.m": "",
+              "/YTKUtils/Classes/Utils/PinyinUtils.m": "",
+              "/YTKUtils/Classes/Utils/RegexUtils.m": "",
+              "/YTKUtils/Classes/Utils/YTKAES256EncryptUtils.m": "",
+              "/YTKUtils/Classes/Utils/YTKAlertUtils.m": "",
+              "/YTKUtils/Classes/Utils/YTKCookieUtils.m": "",
+              "/YTKUtils/Classes/Utils/YTKSharedDataUtils.m": ""
+        ])
+    }
+}
+
+extension ProjectDescription.Target {
+    var sourceTestDescriptions: [String: String] {
+        var descriptions: [String: String] = [:]
+        for source in sources?.globs ?? [] {
+            descriptions[source.glob.pathString] = source.compilerFlags ?? "nil"
+        }
+        return descriptions
     }
 }

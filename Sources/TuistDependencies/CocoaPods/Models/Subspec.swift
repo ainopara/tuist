@@ -202,9 +202,6 @@ public extension Subspec {
                 ImplicitStringList(wrappedValue: ($0.wrappedValue ?? []) + ($1.wrappedValue ?? []))
             })
         }
-        if let otherCompilerFlags = other.compilerFlags {
-            self.compilerFlags = (self.compilerFlags ?? []) + otherCompilerFlags
-        }
 
         if let otherIOS = other.ios {
             self.ios?.merge(otherIOS)

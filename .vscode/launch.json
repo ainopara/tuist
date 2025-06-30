@@ -1,7 +1,7 @@
 {
   "configurations": [
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "name": "Debug tuist",
       "program": "${workspaceFolder:tuist}/.build/debug/tuist",
@@ -10,7 +10,7 @@
       "preLaunchTask": "swift: Build Debug tuist"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "name": "Release tuist",
       "program": "${workspaceFolder:tuist}/.build/release/tuist",
@@ -19,7 +19,7 @@
       "preLaunchTask": "swift: Build Release tuist"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "name": "Debug tuistenv",
       "program": "${workspaceFolder:tuist}/.build/debug/tuistenv",
@@ -28,7 +28,7 @@
       "preLaunchTask": "swift: Build Debug tuistenv"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "name": "Release tuistenv",
       "program": "${workspaceFolder:tuist}/.build/release/tuistenv",
@@ -48,7 +48,7 @@
       "preLaunchTask": "swift: Build All"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "sourceLanguages": [
         "swift"
@@ -60,7 +60,7 @@
       "preLaunchTask": "swift: Build Debug tuistbenchmark"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "sourceLanguages": [
         "swift"
@@ -72,7 +72,7 @@
       "preLaunchTask": "swift: Build Release tuistbenchmark"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "sourceLanguages": [
         "swift"
@@ -84,7 +84,7 @@
       "preLaunchTask": "swift: Build Debug tuistfixturegenerator"
     },
     {
-      "type": "lldb",
+      "type": "swift",
       "request": "launch",
       "sourceLanguages": [
         "swift"
