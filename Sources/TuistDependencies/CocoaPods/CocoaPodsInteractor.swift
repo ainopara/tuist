@@ -483,8 +483,6 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                         continue
                     }
 
-                    print("processSubspecsRecursively -> \(subspecName)")
-
                     let sourceFiles = subspec.sourceFiles ?? []
                     let subSpecSources = resolveGlobs(manifestPath: manifestPath, globs: sourceFiles)
                     let validSubSpecSources = filterFiles(subSpecSources, hasExtensionIn: Target.validSourceExtensions)

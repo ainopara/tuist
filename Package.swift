@@ -219,6 +219,15 @@ var targets: [Target] = [
 
         ]
     ),
+    .testTarget(
+        name: "TuistMergeableFrameworkTests",
+        dependencies: [
+            "TuistCore",
+            "TuistCoreTesting",
+            "TuistGraphTesting",
+            "TuistSupportTesting",
+        ]
+    ),
     .target(
         name: "TuistMigration",
         dependencies: [

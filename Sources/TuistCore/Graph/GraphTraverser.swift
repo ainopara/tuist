@@ -16,6 +16,9 @@ public class GraphTraverser: GraphTraversing {
     private let graph: Graph
     private let conditionCache = ConditionCache()
     private let systemFrameworkMetadataProvider: SystemFrameworkMetadataProviding = SystemFrameworkMetadataProvider()
+    private lazy var mergedDependencies: [GraphDependency: GraphDependency] = {
+        computeMergedDependencies()
+    }()
 
     public required init(graph: Graph) {
         self.graph = graph
@@ -249,6 +252,7 @@ public class GraphTraverser: GraphTraversing {
         guard let target = target(path: path, name: name), canEmbedProducts(target: target.target) else { return Set() }
 
         var references: Set<GraphDependencyReference> = Set([])
+        let targetGraphDependency = GraphDependency.target(name: name, path: path)
 
         /// Precompiled frameworks
         var precompiledFrameworks = filterDependencies(
@@ -278,6 +282,25 @@ public class GraphTraverser: GraphTraversing {
         }
 
         references.formUnion(otherTargetFrameworks.lazy.compactMap { self.dependencyReference(
+            to: $0,
+            from: .target(name: name, path: path)
+        ) })
+
+        // Find merged frameworks that contain dependencies of the current target
+        let allCurrentTargetDependencies = graph.dependencies[.target(name: name, path: path), default: []]
+        let mergedFrameworksForCurrentTarget = Set(allCurrentTargetDependencies.compactMap { dependency -> GraphDependency? in
+            // Check if this dependency has been merged into a dynamic framework
+            if
+                let mergedTarget = mergedDependencies[dependency],
+                mergedTarget != targetGraphDependency
+            {
+                return mergedTarget
+            }
+            return nil
+        })
+
+        // Add merged frameworks to embeddable frameworks
+        references.formUnion(mergedFrameworksForCurrentTarget.lazy.compactMap { self.dependencyReference(
             to: $0,
             from: .target(name: name, path: path)
         ) })
@@ -313,6 +336,16 @@ public class GraphTraverser: GraphTraversing {
 
         var references = Set<GraphDependencyReference>()
         let targetGraphDependency = GraphDependency.target(name: name, path: path)
+        
+        // Create a mapping function that resolves merged dependencies
+        // but excludes self-references to prevent circular dependencies
+        func resolveMergedDependency(_ dependency: GraphDependency) -> GraphDependency {
+            if let mergedTarget = mergedDependencies[dependency],
+               mergedTarget != targetGraphDependency {
+                return mergedTarget
+            }
+            return dependency
+        }
 
         // System libraries and frameworks
         if target.target.canLinkStaticProducts() {
@@ -404,6 +437,7 @@ public class GraphTraverser: GraphTraversing {
 
             references.formUnion(
                 allDependencies
+                    .map(resolveMergedDependency) // Resolve merged dependencies
                     .compactMap { dependencyReference(to: $0, from: targetGraphDependency) }
             )
             references.subtract(
@@ -415,6 +449,7 @@ public class GraphTraverser: GraphTraversing {
         // Link dynamic libraries and frameworks
         let dynamicLibrariesAndFrameworks = graph.dependencies[.target(name: name, path: path), default: []]
             .filter(or(isDependencyDynamicLibrary, isDependencyFramework))
+            .map(resolveMergedDependency) // Resolve merged dependencies
             .compactMap { dependencyReference(to: $0, from: targetGraphDependency) }
 
         references.formUnion(dynamicLibrariesAndFrameworks)
@@ -1177,6 +1212,109 @@ public class GraphTraverser: GraphTraversing {
         )
         return Set(dependencies)
             .compactMap { dependencyReference(to: $0, from: .target(name: name, path: path)) }
+    }
+
+    // MARK: - Dynamic Library Merging Support
+
+    /// Checks if a dependency has been merged into a dynamic library
+    func isMergedIntoDynamicLibrary(dependency: GraphDependency) -> Bool {
+        return mergedDependencies[dependency] != nil
+    }
+
+    /// Gets the dynamic library that a dependency has been merged into
+    func getMergedDynamicLibrary(for dependency: GraphDependency) -> GraphDependency? {
+        return mergedDependencies[dependency]
+    }
+
+
+    /// Checks if a target is configured as a mergeable dynamic library
+    func isMergeableDynamicLibrary(dependency: GraphDependency) -> Bool {
+        guard
+            case let .target(name, path) = dependency,
+            let target = target(path: path, name: name)
+        else { return false }
+
+        // Check if target is a dynamic library/framework with merge configuration
+        return target.target.product.isDynamic && hasMergeConfiguration(target: target.target)
+    }
+
+    /// Checks if a target has merge configuration enabled
+    private func hasMergeConfiguration(target: Target) -> Bool {
+        guard let settings = target.settings else { return false }
+        
+        // Check base settings first
+        if let mergeValue = settings.base["TUIST_DYNAMIC_MERGE"] {
+            switch mergeValue {
+            case let .string(stringValue):
+                if stringValue == "YES" { return true }
+            case .array:
+                break // Arrays not expected for this setting
+            }
+        }
+        
+        // Check all configurations for TUIST_DYNAMIC_MERGE setting
+        for (_, configuration) in settings.configurations {
+            if let config = configuration,
+               let mergeValue = config.settings["TUIST_DYNAMIC_MERGE"] {
+                switch mergeValue {
+                case let .string(stringValue):
+                    if stringValue == "YES" { return true }
+                case .array:
+                    break // Arrays not expected for this setting
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /// Computes merged dependencies considering transitive dependencies
+    /// This method should be used instead of the direct dependency approach in GraphLoader
+    private func computeMergedDependencies() -> [GraphDependency: GraphDependency] {
+        var mergedDependencies: [GraphDependency: GraphDependency] = [:]
+        
+        // Find all targets that are configured as mergeable dynamic libraries
+        for (projectPath, projectTargets) in graph.targets {
+            for (targetName, target) in projectTargets {
+                let targetDependency = GraphDependency.target(name: targetName, path: projectPath)
+                
+                guard target.product.isDynamic && hasMergeConfiguration(target: target) else { continue }
+                
+                // Get transitive static dependencies instead of just direct dependencies
+                let transitiveDependencies = transitiveStaticDependencies(from: targetDependency)
+                
+                // Mark all mergeable dependencies as merged into this target
+                for dependency in transitiveDependencies {
+                    if shouldMergeDependency(dependency) {
+                        mergedDependencies[dependency] = targetDependency
+                    }
+                }
+            }
+        }
+
+        return mergedDependencies
+    }
+    
+    /// Checks if a dependency should be merged - adapted from GraphLoader
+    private func shouldMergeDependency(_ dependency: GraphDependency) -> Bool {
+        switch dependency {
+        case let .target(name, path):
+            guard let target = target(path: path, name: name) else { return false }
+            // Only merge static libraries and frameworks that are mergeable
+            return target.target.product.isStatic || (target.target.product.isDynamic && target.target.mergeable)
+        case let .xcframework(xcframework):
+            // Don't merge dynamic xcframeworks
+            return xcframework.linking != .dynamic
+        case let .framework(_, _, _, _, linking, _, _, _):
+            // Don't merge dynamic frameworks
+            return linking != .dynamic
+        case let .library(_, _, linking, _, _):
+            // Don't merge dynamic libraries
+            return linking != .dynamic
+        default:
+            // Don't merge SDKs, bundles, packages, etc.
+            return false
+        }
     }
 }
 
