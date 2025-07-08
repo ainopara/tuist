@@ -217,11 +217,11 @@ public class PrecompiledMetadataProvider: PrecompiledMetadataProviding {
 
         guard String(data: magic, encoding: .ascii) == archiveFormatMagic else { return }
 
-        binary.seek(to: archiveHeaderSizeOffset)
+        binary.seek(to: currentOffset + archiveHeaderSizeOffset)
         guard let sizeString = binary.readString(ofLength: 10) else { return }
 
         let size = strtoul(sizeString, nil, 10)
-        binary.seek(to: 8 + sizeOfArchiveHeader + UInt64(size))
+        binary.seek(to: currentOffset + 8 + sizeOfArchiveHeader + UInt64(size))
 
         guard let name = binary.readString(ofLength: 16) else { return }
         binary.seek(to: binary.currentOffset - 16)

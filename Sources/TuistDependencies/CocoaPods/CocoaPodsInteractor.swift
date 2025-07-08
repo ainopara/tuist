@@ -449,7 +449,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     result.append("-fno-objc-arc")
                 }
                 
-                if isSource(filePath, hasExtensionIn: ["m", "mm", "c", "cpp", "cc"]) {
+                if isSource(filePath, hasExtensionIn: ["m", "mm", "c", "cc", "cpp"]) {
                     result += ["-w -Xanalyzer -analyzer-disable-all-checks"]
                 }
                 return result

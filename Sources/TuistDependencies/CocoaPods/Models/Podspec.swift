@@ -176,7 +176,7 @@ public extension Podspec {
             let currentSubspecName = subspecsToInspect.popLast()!
             inspectedSubspecs.insert(currentSubspecName)
             if let currentSubspec = subspecs.first(where: { $0.name == currentSubspecName }) {
-                for dependencyName in (currentSubspec.dependencies ?? [:]).keys where dependencyName.hasPrefix(self.name) {
+                for dependencyName in (currentSubspec.dependencies ?? [:]).keys where dependencyName.hasPrefix(self.name + "/") {
                     let shortDependencyName = dependencyName.split(separator: "/")[1...].joined(separator: "/")
                     if !inspectedSubspecs.contains(shortDependencyName) {
                         subspecsToInspect.append(shortDependencyName)
@@ -194,10 +194,9 @@ public extension Podspec {
         let finalValidSubspecs = (self.subspecs ?? [])
             .filter { subspecNames.contains($0.name!) }
             .map { $0.mergeSubspecs(subspecNames: nil) }
-        let mergedSpec = Subspec()
-        mergedSpec.name = rootspec.name
+        let mergedSpec = self.rootspec
 
-        for subspec in ([self.rootspec] + finalValidSubspecs) {
+        for subspec in finalValidSubspecs {
             mergedSpec.merge(subspec)
         }
 

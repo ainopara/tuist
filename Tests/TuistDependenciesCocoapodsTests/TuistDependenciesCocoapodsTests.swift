@@ -757,6 +757,8 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
         var spec = try JSONDecoder().decode(Podspec.self, from: specJSON.data(using: .utf8)!)
         spec = spec.resolvePodspec(selectedSubspecs: nil)
 
+        XCTAssertNoDifference(spec.compilerFlags, ["-x objective-c++"])
+
         XCTAssertNoDifference(spec.requiresArc, .array([
             "Core/MemoryFile.cpp",
             "Core/ThreadLock.cpp",
@@ -813,6 +815,51 @@ class TuistDependenciesCocoapodsTests: XCTestCase {
             "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_md32_common.h",
             "\(pathToPodsRoot)/MMKVCore/Core/aes/openssl/openssl_md5_locl.h",
             "\(pathToPodsRoot)/MMKVCore/Core/crc32/Checksum.h"
+        ])
+
+        let sourceInfos = projects.first!.value.targets.first!.sourceTestDescriptions
+            .map {
+                return (
+                    $0.key.replacingOccurrences(of: pathToPodsRoot, with: ""),
+                    $0.value
+                )
+            }
+            .reduce(into: [:]) { $0[$1.0] = $1.1 }
+
+        XCTAssertNoDifference(sourceInfos, [
+            "/MMKVCore/Core/CodedInputData.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/CodedInputDataCrypt.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/CodedInputDataCrypt_OSX.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/CodedInputData_OSX.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/CodedOutputData.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/InterProcessLock.cpp": "-x objective-c++",
+            "/MMKVCore/Core/InterProcessLock_Android.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/InterProcessLock_Win32.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/KeyValueHolder.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MMBuffer.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MMKV.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MMKVLog.cpp": "-x objective-c++",
+            "/MMKVCore/Core/MMKVLog_Android.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MMKV_Android.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MMKV_IO.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MMKV_OSX.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MemoryFile.cpp": "-x objective-c++",
+            "/MMKVCore/Core/MemoryFile_Android.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MemoryFile_Linux.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MemoryFile_OSX.cpp": "-x objective-c++",
+            "/MMKVCore/Core/MemoryFile_Win32.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MiniPBCoder.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/MiniPBCoder_OSX.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/PBUtility.cpp": "-x objective-c++",
+            "/MMKVCore/Core/ThreadLock.cpp": "-x objective-c++",
+            "/MMKVCore/Core/ThreadLock_Win32.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/aes/AESCrypt.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/aes/openssl/openssl_aes-armv4.S": "",
+            "/MMKVCore/Core/aes/openssl/openssl_aes_core.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/aes/openssl/openssl_aesv8-armx.S": "",
+            "/MMKVCore/Core/aes/openssl/openssl_cfb128.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/aes/openssl/openssl_md5_dgst.cpp": "-x objective-c++ -fno-objc-arc",
+            "/MMKVCore/Core/aes/openssl/openssl_md5_one.cpp": "-x objective-c++ -fno-objc-arc"
         ])
 
         XCTAssertNoDifference(dependencies, [
