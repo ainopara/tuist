@@ -28,6 +28,8 @@ public struct CocoaPodsDependencies: Equatable {
         case podspec(path: String)
     }
 
+    public let deploymentTarget: String
+
     public let sources: [PodSpecSource]
 
     public let pods: [Pod]
@@ -39,11 +41,13 @@ public struct CocoaPodsDependencies: Equatable {
     public let targetSettings: [String: SettingsDictionary]
 
     public init(
+        deploymentTarget: String,
         sources: [PodSpecSource],
         pods: [Pod],
         baseSettings: Settings,
         targetSettings: [String: SettingsDictionary]
     ) {
+        self.deploymentTarget = deploymentTarget
         self.sources = sources
         self.pods = pods
         self.baseSettings = baseSettings

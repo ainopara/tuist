@@ -98,7 +98,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         logger.info("Generating PodsHolder Project.", metadata: .subsection)
         try generateProjectSwiftFile(pathsProvider: pathsProvider)
         logger.info("Generating Podfile.", metadata: .subsection)
-        try generatePodfile(pathsProvider: pathsProvider, dependencies: dependencies, platforms: platforms)
+        try generatePodfile(pathsProvider: pathsProvider, dependencies: dependencies, platforms: platforms, globalDeploymentTarget: dependencies.deploymentTarget)
         try loadDependencies(pathsProvider: pathsProvider, dependencies: dependencies)
 
         if shouldUpdate {
@@ -169,6 +169,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 descriptionBaseSettings: descriptionBaseSettings,
                 descriptionConfigurations: descriptionConfigurations,
                 targetSettings: dependencies.targetSettings,
+                globalDeploymentTarget: dependencies.deploymentTarget,
                 podsDirectoryPath: pathsProvider.destinationPodsDirectory
             )
             externalProjects.merge(specProject, uniquingKeysWith: { $1 })
@@ -230,7 +231,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
     func buildBundleTarget(
         for spec: Podspec,
         manifestPath: Path,
-        descriptionConfigurations: [ProjectDescription.Configuration]
+        descriptionConfigurations: [ProjectDescription.Configuration],
+        globalDeploymentTarget: String
     ) -> ([ProjectDescription.Target], [ProjectDescription.TargetDependency]) {
         
         let resourceFiles = resolveGlobs(manifestPath: manifestPath, globs: spec.resources ?? [])
@@ -282,7 +284,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     product: .bundle,
                     productName: key,
                     bundleId: "org.cocoapods.\(spec.name).bundle.\(key)".replacingOccurrences(of: "_", with: "-"),
-                    deploymentTargets: .iOS("12.0"),
+                    deploymentTargets: .iOS(globalDeploymentTarget),
                     resources: ResourceFileElements(
                         resources: resolveGlobs(manifestPath: manifestPath, globs: globs.wrappedValue ?? []).map(mapGlobResult)
                     ),
@@ -313,6 +315,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         descriptionBaseSettings: ProjectDescription.SettingsDictionary,
         descriptionConfigurations: [ProjectDescription.Configuration],
         targetSettings: [String: TuistGraph.SettingsDictionary],
+        globalDeploymentTarget: String,
         podsDirectoryPath: AbsolutePath
     ) -> ([Path: ProjectDescription.Project], [String: [ProjectDescription.TargetDependency]]) {
 
@@ -354,7 +357,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             let (bundleTargets, resourceDependencies) = buildBundleTarget(
                 for: spec,
                 manifestPath: manifestPath,
-                descriptionConfigurations: descriptionConfigurations
+                descriptionConfigurations: descriptionConfigurations,
+                globalDeploymentTarget: globalDeploymentTarget
             )
 
             result += resourceDependencies
@@ -621,7 +625,8 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
             let (bundleTargets, bundleDependencies) = buildBundleTarget(
                 for: spec,
                 manifestPath: manifestPath,
-                descriptionConfigurations: descriptionConfigurations
+                descriptionConfigurations: descriptionConfigurations,
+                globalDeploymentTarget: globalDeploymentTarget
             )
 
             var targets: [ProjectDescription.Target] = [
@@ -631,7 +636,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                     product: .staticFramework,
                     productName: validSources.isEmpty ? (spec.name + "Aggregate") : (spec.moduleName ?? spec.headerDir),
                     bundleId: "org.cocoapods.\(spec.name)".replacingOccurrences(of: "_", with: "-"),
-                    deploymentTargets: .iOS("12.0"),
+                    deploymentTargets: .iOS(globalDeploymentTarget),
                     infoPlist: .default,
                     sources: {
                         if !validSources.isEmpty {
@@ -897,12 +902,13 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
     private func generatePodfile(
         pathsProvider: CocoaPodsPathsProvider,
         dependencies: TuistGraph.CocoaPodsDependencies,
-        platforms: Set<TuistGraph.PackagePlatform>
+        platforms: Set<TuistGraph.PackagePlatform>,
+        globalDeploymentTarget: String
     ) throws {
         var podfile = """
         install! 'cocoapods', :warn_for_unused_master_specs_repo => false
 
-        platform :ios, '12.0'
+        platform :ios, '\(globalDeploymentTarget)'
 
         inhibit_all_warnings!
         use_modular_headers!

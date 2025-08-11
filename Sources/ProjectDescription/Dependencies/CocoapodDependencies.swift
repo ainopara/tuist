@@ -2,6 +2,8 @@ import Foundation
 
 public struct CocoapodDependencies: Codable, Equatable {
 
+    public let deploymentTarget: String
+
     public let sources: [PodSpecSource]
 
     public let pods: [Pod]
@@ -13,11 +15,13 @@ public struct CocoapodDependencies: Codable, Equatable {
     public let targetSettings: [String: SettingsDictionary]
 
     public init(
+        deploymentTarget: String,
         sources: [PodSpecSource],
         pods: [Pod],
         baseSettings: Settings,
         targetSettings: [String: SettingsDictionary]
     ) {
+        self.deploymentTarget = deploymentTarget
         self.sources = sources
         self.pods = pods
         self.baseSettings = baseSettings

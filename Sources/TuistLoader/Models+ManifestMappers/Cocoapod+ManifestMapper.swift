@@ -16,6 +16,7 @@ extension TuistGraph.CocoaPodsDependencies {
         let targetSettings = manifest.targetSettings.mapValues { TuistGraph.SettingsDictionary.from(manifest: $0) }
 
         return .init(
+            deploymentTarget: manifest.deploymentTarget,
             sources: manifest.sources.map { manifest in CocoaPodsDependencies.PodSpecSource.from(manifest: manifest) },
             pods: try manifest.pods.map { manifest in
                 return try CocoaPodsDependencies.Pod.from(manifest: manifest)
