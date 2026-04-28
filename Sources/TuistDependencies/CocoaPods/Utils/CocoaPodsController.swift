@@ -62,12 +62,10 @@ public final class CocoaPodsController: CocoaPodsControlling {
     // MARK: - Helpers
 
     private func buildCocoaPodsCommand(path: AbsolutePath, subcommand: String, arguments: [String] = []) -> [String] {
-        let commandComponents: [String] = [
-            ("~/.rbenv/shims/bundle" as NSString).expandingTildeInPath,
-            "exec",
+        let commandComponents = BundlerCommand.exec([
             "pod",
             subcommand
-        ]
+        ])
 
         return commandComponents + arguments
     }

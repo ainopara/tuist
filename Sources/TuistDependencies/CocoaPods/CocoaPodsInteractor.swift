@@ -819,8 +819,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
         try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
         if specPath.basename.hasSuffix(".podspec") {
-            let bundlePath = ("~/.rbenv/shims/bundle" as NSString).expandingTildeInPath
-            let result = try System.shared.capture([bundlePath, "exec", "pod", "ipc", "spec", specPath.basename])
+            let result = try System.shared.capture(BundlerCommand.exec(["pod", "ipc", "spec", specPath.basename]))
             let resultData = result.data(using: .utf8)!
             try localFileSystem.writeFileContents(
                 specsDirectory.appending(component: specPath.basename + ".json"),
@@ -848,8 +847,7 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
         try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
         if specPath.basename.hasSuffix(".podspec") {
-            let bundlePath = ("~/.rbenv/shims/bundle" as NSString).expandingTildeInPath
-            let result = try System.shared.capture([bundlePath, "exec", "pod", "ipc", "spec", specPath.basename])
+            let result = try System.shared.capture(BundlerCommand.exec(["pod", "ipc", "spec", specPath.basename]))
             let resultData = result.data(using: .utf8)!
             try localFileSystem.writeFileContents(
                 specsDirectory.appending(component: specPath.basename + ".json"),
