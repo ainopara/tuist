@@ -706,25 +706,30 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         try localFileSystem.removeFileTree(specsDirectory)
         try localFileSystem.createDirectory(specsDirectory)
 
-        let savedCWD = localFileSystem.currentWorkingDirectory
-        logger.debug("Changing current working directory from \(savedCWD?.pathString ?? "nil") to \(specsDirectory.pathString)")
-        try localFileSystem.changeCurrentWorkingDirectory(to: specsDirectory)
-
-        _ = try await pods.concurrentMap { pod in
+        let podspecsToConvert = try await pods.concurrentCompactMap { pod -> AbsolutePath? in
             switch pod {
             case .remote(let name, let source, _, _):
                 switch source {
                 case .version(let version):
-                    try await self.dealWithSourceVersion(pathsProvider: pathsProvider, name: name, version: version, sources: sources)
+                    return try await self.dealWithSourceVersion(
+                        pathsProvider: pathsProvider,
+                        name: name,
+                        version: version,
+                        sources: sources
+                    )
                 case .podspec(let path):
-                    try self.dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
+                    return try self.dealWithSourcePodspec(pathsProvider: pathsProvider, name: name, path: path)
                 }
             }
         }
 
-        if let savedCWD {
-            logger.debug("Restoring current working directory \(savedCWD.pathString)")
-            try localFileSystem.changeCurrentWorkingDirectory(to: savedCWD)
+        let podspecJSONs = try CocoaPodsIPCSpecConverter().convert(podspecsToConvert, workingDirectory: specsDirectory)
+        for (podspecPath, podspecJSON) in zip(podspecsToConvert, podspecJSONs) {
+            try localFileSystem.writeFileContents(
+                podspecPath.parentDirectory.appending(component: podspecPath.basename + ".json"),
+                bytes: ByteString(Data(podspecJSON.utf8)),
+                atomically: true
+            )
         }
 
         let files = try localFileSystem.getDirectoryContents(specsDirectory)
@@ -739,7 +744,12 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         return results
     }
 
-    private func dealWithSourceVersion(pathsProvider: CocoaPodsPathsProvider, name: String, version: String, sources: [CocoaPodsDependencies.PodSpecSource]) async throws {
+    private func dealWithSourceVersion(
+        pathsProvider: CocoaPodsPathsProvider,
+        name: String,
+        version: String,
+        sources: [CocoaPodsDependencies.PodSpecSource]
+    ) async throws -> AbsolutePath? {
 
         func findSpecInSource(sourceName: String, isCDN: Bool) throws -> [AbsolutePath] {
             if isCDN {
@@ -812,24 +822,20 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
                 for candidate in specPathCandidates {
                     logger.error("  - \(candidate.pathString)")
                 }
-                return
+                return nil
             }
         }
 
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
-        try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
+        let destinationSpecPath = specsDirectory.appending(component: specPath.basename)
+        try localFileSystem.copy(from: specPath, to: destinationSpecPath)
         if specPath.basename.hasSuffix(".podspec") {
-            let result = try System.shared.capture(BundlerCommand.exec(["pod", "ipc", "spec", specPath.basename]))
-            let resultData = result.data(using: .utf8)!
-            try localFileSystem.writeFileContents(
-                specsDirectory.appending(component: specPath.basename + ".json"),
-                bytes: ByteString(resultData),
-                atomically: true
-            )
+            return destinationSpecPath
         }
+        return nil
     }
 
-    private func dealWithSourcePodspec(pathsProvider: CocoaPodsPathsProvider, name: String, path: String) throws {
+    private func dealWithSourcePodspec(pathsProvider: CocoaPodsPathsProvider, name: String, path: String) throws -> AbsolutePath? {
         let projectRootPath = pathsProvider.dependenciesDirectory.parentDirectory.parentDirectory
         let specOrFolderPath = try projectRootPath.appending(RelativePath(validating: path))
         var specPath = specOrFolderPath
@@ -841,20 +847,16 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         }
         guard localFileSystem.exists(specPath) else {
             logger.warning("Cannot find \(name).podspec.json or \(name).podspec in \(path)")
-            return
+            return nil
         }
 
         let specsDirectory = pathsProvider.destinationCocoaPodsDirectory.appending(component: "Podspecs")
-        try localFileSystem.copy(from: specPath, to: specsDirectory.appending(component: specPath.basename))
+        let destinationSpecPath = specsDirectory.appending(component: specPath.basename)
+        try localFileSystem.copy(from: specPath, to: destinationSpecPath)
         if specPath.basename.hasSuffix(".podspec") {
-            let result = try System.shared.capture(BundlerCommand.exec(["pod", "ipc", "spec", specPath.basename]))
-            let resultData = result.data(using: .utf8)!
-            try localFileSystem.writeFileContents(
-                specsDirectory.appending(component: specPath.basename + ".json"),
-                bytes: ByteString(resultData),
-                atomically: true
-            )
+            return destinationSpecPath
         }
+        return nil
     }
 
     // MARK: - Installation
