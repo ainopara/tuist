@@ -33,7 +33,6 @@ public final class CocoaPodsController: CocoaPodsControlling {
     var defaultEnv: [String: String] {
         var env = System.shared.env
         env["LANG"] = "en_US.UTF-8"
-        env["PATH"] = "/usr/local/bin:" + (env["PATH"] ?? "/usr/local/bin:/usr/bin:/bin")
         return env
     }
 

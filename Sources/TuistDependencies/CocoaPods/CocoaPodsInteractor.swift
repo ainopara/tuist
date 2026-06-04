@@ -890,12 +890,10 @@ public final class CocoaPodsInteractor: CocoaPodsInteracting {
         try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory.appending(component: "Sources"))
         try fileHandler.createFolder(pathsProvider.destinationCocoaPodsDirectory.appending(component: "Tuist"))
 
-        var env = System.shared.env
-        env["PATH"] = "/usr/local/bin:" + (env["PATH"] ?? "/usr/local/bin:/usr/bin:/bin")
         try System.shared.runAndPrint(
             ["/usr/bin/env", "tuist", "generate", "-p", pathsProvider.destinationCocoaPodsDirectory.pathString],
             verbose: true,
-            environment: env
+            environment: System.shared.env
         )
     }
 
